@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "jobId": "fixture-history",
+  "title": "The Dancing Plague of 1518",
+  "voice": "am_michael",
+  "lang": "en-us",
+  "speed": 1,
+  "music": "mystery",
+  "scenes": [
+    { "narration": "In the summer of fifteen eighteen, a woman stepped into a street in Strasbourg and started to dance.", "image": "fixtures/images/history-0.jpg" },
+    { "narration": "Her name was Frau Troffea. There was no music, and she did not stop.", "image": "fixtures/images/history-1.jpg" },
+    { "narration": "She danced for almost a week. Then her neighbors began to join her.", "image": "fixtures/images/history-2.jpg" },
+    { "narration": "Within a month, around four hundred people were dancing in the streets, unable to stop.", "image": "fixtures/images/history-3.jpg" },
+    { "narration": "City leaders had a strange idea. They thought the cure was more dancing.", "image": "fixtures/images/history-4.jpg" },
+    { "narration": "So they built a stage, hired musicians, and paid strong men to keep the dancers moving.", "image": "fixtures/images/history-5.jpg" },
+    { "narration": "It made things worse. Exhausted dancers collapsed, and some reportedly never got up.", "image": "fixtures/images/history-6.jpg" },
+    { "narration": "Historians still argue about the cause. Mass stress, famine and fear are the leading theories.", "image": "fixtures/images/history-7.jpg" },
+    { "narration": "Others blame ergot, a mold on rye bread that can cause spasms and hallucinations.", "image": "fixtures/images/history-8.jpg" },
+    { "narration": "Whatever it was, the dancing plague remains one of history's strangest mysteries. What do you think caused it?", "image": "fixtures/images/history-9.jpg" }
+  ],
+  "output": {
+    "video": "jobs/fixture-history/video.mp4",
+    "thumbnail": "jobs/fixture-history/thumbnail.jpg",
+    "workPrefix": "jobs/fixture-history/work"
+  }
+}

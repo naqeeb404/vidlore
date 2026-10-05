@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "jobId": "fixture-scary",
+  "title": "The Voicemail From My Own Number",
+  "voice": "am_fenrir",
+  "lang": "en-us",
+  "speed": 1,
+  "music": "dark",
+  "scenes": [
+    { "narration": "Last night I got a voicemail. It came from my own phone number.", "image": "fixtures/images/scary-0.jpg" },
+    { "narration": "I live alone, and my phone was in my hand the whole evening.", "image": "fixtures/images/scary-1.jpg" },
+    { "narration": "The message was forty seconds long. At first, just breathing.", "image": "fixtures/images/scary-2.jpg" },
+    { "narration": "Then a voice whispered my address, slowly, like it was reading it off my door.", "image": "fixtures/images/scary-3.jpg" },
+    { "narration": "I checked the time stamp. It said the call was made tomorrow at three in the morning.", "image": "fixtures/images/scary-4.jpg" },
+    { "narration": "It is two fifty nine now. And someone is knocking.", "image": "fixtures/images/scary-5.jpg" }
+  ],
+  "output": {
+    "video": "jobs/fixture-scary/video.mp4",
+    "thumbnail": "jobs/fixture-scary/thumbnail.jpg",
+    "workPrefix": "jobs/fixture-scary/work"
+  }
+}
