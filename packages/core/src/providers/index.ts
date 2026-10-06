@@ -1,7 +1,7 @@
 import { cloudflareGenerateImage } from "./cloudflare";
 import { geminiWriteScript } from "./gemini";
-import { pexelsFindStockVideo } from "./pexels";
-import type { FindStockVideo, GenerateImage, WriteScript } from "./types";
+import { pexelsFindStockPhoto, pexelsFindStockVideo } from "./pexels";
+import type { FindStockPhoto, FindStockVideo, GenerateImage, WriteScript } from "./types";
 
 /** Provider registry. Add a new provider here and select it with an env var. */
 export function getScriptWriter(): WriteScript {
@@ -32,6 +32,11 @@ export function getStockFinder(): FindStockVideo | null {
     default:
       throw new Error(`Unknown STOCK_PROVIDER ${process.env.STOCK_PROVIDER}`);
   }
+}
+
+export function getStockPhotoFinder(): FindStockPhoto | null {
+  const key = process.env.PEXELS_API_KEY;
+  return key && (process.env.STOCK_PROVIDER ?? "pexels") === "pexels" ? pexelsFindStockPhoto(key) : null;
 }
 
 export type * from "./types";

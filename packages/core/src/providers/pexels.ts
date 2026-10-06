@@ -1,4 +1,18 @@
-import type { FindStockVideo, StockClip } from "./types";
+import type { FindStockPhoto, FindStockVideo, StockClip } from "./types";
+
+/** Pexels photo search, used when the AI image allowance is used up. */
+export function pexelsFindStockPhoto(apiKey: string): FindStockPhoto {
+  return async ({ query }) => {
+    const params = new URLSearchParams({ query, orientation: "portrait", size: "large", per_page: "5" });
+    const res = await fetch(`https://api.pexels.com/v1/search?${params}`, { headers: { authorization: apiKey } });
+    if (!res.ok) throw new Error(`Pexels photo search failed (${res.status})`);
+    const data = (await res.json()) as {
+      photos?: { id: number; url: string; photographer: string; src: { large2x: string } }[];
+    };
+    const p = data.photos?.[0];
+    return p ? { id: `photo-${p.id}`, url: p.src.large2x, credit: { name: p.photographer, url: p.url } } : null;
+  };
+}
 
 type PexelsVideo = {
   id: number;

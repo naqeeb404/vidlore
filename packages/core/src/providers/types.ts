@@ -41,6 +41,9 @@ export interface StockClip {
 /** Find one real, vertical stock video clip. Returns null when nothing fits. */
 export type FindStockVideo = (input: { query: string; minSeconds: number; exclude: string[] }) => Promise<StockClip | null>;
 
+/** Find one real vertical stock photo (animated by the worker's 3D camera). Returns null when nothing fits. */
+export type FindStockPhoto = (input: { query: string }) => Promise<{ url: string; credit: { name: string; url: string }; id: string } | null>;
+
 /** A free-tier provider allowance is used up for today. The UI shows the daily-limit message. */
 export class QuotaExceededError extends Error {
   constructor(provider: string) {

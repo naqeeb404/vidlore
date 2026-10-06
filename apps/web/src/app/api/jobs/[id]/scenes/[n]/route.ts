@@ -5,7 +5,8 @@ import { rateLimit } from "@/server/rate-limit";
 
 export const maxDuration = 26;
 
-const LIMIT_MESSAGE = "Daily demo limit reached, come back tomorrow.";
+// Cloudflare's free AI image allowance resets at 00:00 UTC. The script is kept, so the visitor can resume.
+const QUOTA_MESSAGE = "Today's free AI image allowance is used up. It resets at midnight UTC.";
 
 /**
  * Make one scene's visual: a real stock clip or an AI image. One short request per scene keeps
@@ -36,11 +37,11 @@ export async function POST(req: Request, ctx: RouteContext<"/api/jobs/[id]/scene
   try {
     asset = await make();
   } catch (err) {
-    if (err instanceof QuotaExceededError) return fail(429, LIMIT_MESSAGE, "daily_limit");
+    if (err instanceof QuotaExceededError) return fail(429, QUOTA_MESSAGE, "image_quota");
     try {
       asset = await make(); // retry once
     } catch (err2) {
-      if (err2 instanceof QuotaExceededError) return fail(429, LIMIT_MESSAGE, "daily_limit");
+      if (err2 instanceof QuotaExceededError) return fail(429, QUOTA_MESSAGE, "image_quota");
       console.error("[scene] failed", err2);
       return fail(502, "We couldn't make this scene. Please try again.", "scene_failed");
     }

@@ -20,7 +20,7 @@ export function VideoJob({ id }: { id: string }) {
   // Read lazily: the first render (server and client) shows a loader, so this cannot cause a hydration mismatch.
   const [token] = useState<string | undefined>(() => (typeof window === "undefined" ? undefined : tokenFor(id)));
   const [error, setError] = useState<string | null>(null);
-  const [limitReached, setLimitReached] = useState(false);
+  const [limitReached, setLimitReached] = useState<null | "daily" | "images">(null);
   const running = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -71,14 +71,15 @@ export function VideoJob({ id }: { id: string }) {
           try {
             res = await api<JobResponse>(`/api/jobs/${id}/scenes/${n}`, { method: "POST", token });
           } catch (err) {
-            if (err instanceof ApiError && err.code === "daily_limit") throw err;
+            if (err instanceof ApiError && (err.code === "daily_limit" || err.code === "image_quota")) throw err;
             res = await api<JobResponse>(`/api/jobs/${id}/scenes/${n}`, { method: "POST", token }); // retry once
           }
           setJob(res.job);
         }
         setJob((await api<JobResponse>(`/api/jobs/${id}/render`, { method: "POST", token })).job);
       } catch (err) {
-        if (err instanceof ApiError && err.code === "daily_limit") setLimitReached(true);
+        if (err instanceof ApiError && err.code === "daily_limit") setLimitReached("daily");
+        if (err instanceof ApiError && err.code === "image_quota") setLimitReached("images");
         setError(err instanceof Error ? err.message : "Something went wrong.");
         await refresh();
       } finally {
@@ -113,7 +114,7 @@ export function VideoJob({ id }: { id: string }) {
   }
 
   const isOwner = Boolean(token);
-  if (limitReached) return <LimitReached />;
+  if (limitReached) return <LimitReached reason={limitReached} />;
 
   if (job.status === "script_ready") {
     return isOwner && job.script ? (
@@ -336,7 +337,7 @@ function Credits({ job }: { job: PublicJob }) {
   const unique = [...new Map(credits.map(([, c]) => [c.url, c])).values()];
   return (
     <p className="mt-6 text-xs leading-relaxed text-muted">
-      Real footage:{" "}
+      Footage and photos:{" "}
       {unique.map((c, i) => (
         <span key={c.url}>
           {i > 0 && ", "}
