@@ -12,6 +12,8 @@ import sys
 import tempfile
 import time
 import traceback
+import urllib.parse
+import urllib.request
 from dataclasses import asdict
 from pathlib import Path
 from typing import Callable, TypeVar
@@ -44,6 +46,19 @@ class Timer:
         self.last = now
 
 
+# Only stock-footage CDNs: the timeline comes from our server, but never fetch arbitrary hosts.
+CLIP_HOSTS = ("videos.pexels.com", "player.vimeo.com", "cdn.pixabay.com", "pixabay.com")
+
+
+def fetch_clip(url: str) -> bytes:
+    host = urllib.parse.urlparse(url).hostname or ""
+    if urllib.parse.urlparse(url).scheme != "https" or not any(host == h or host.endswith("." + h) for h in CLIP_HOSTS):
+        raise RuntimeError(f"Refusing to download footage from {host}")
+    req = urllib.request.Request(url, headers={"user-agent": "Vidlore/1.0 (+https://vidlore.app)"})
+    with urllib.request.urlopen(req, timeout=60) as res:
+        return res.read()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeline", default=os.environ.get("TIMELINE_KEY"))
@@ -64,11 +79,11 @@ def main() -> int:
     started = time.time()
     timer = Timer()
     try:
-        # 1. Inputs
+        # 1. Inputs (real clips are downloaded straight from the footage CDN)
         media: list[tuple[str, Path]] = []
         for i, sc in enumerate(tl.scenes):
-            kind, key = ("video", sc.video) if sc.video else ("image", sc.image)
-            data = storage.get(key)
+            kind, key = ("video", sc.video) if (sc.video or sc.video_url) else ("image", sc.image)
+            data = retry_once("footage", lambda: fetch_clip(sc.video_url)) if sc.video_url else storage.get(key)
             if data is None:
                 raise RuntimeError(f"Missing scene {kind} {key}")
             p = work / (f"clip_{i:02d}.mp4" if kind == "video" else f"image_{i:02d}.jpg")
@@ -112,7 +127,7 @@ def main() -> int:
         report("rendering")
         out = work / "video.mp4"
         total = retry_once("render", lambda: render.render_video(
-            media=media, effects=[sc.effect for sc in tl.scenes], atmosphere=tl.atmosphere, scene_starts=starts, voice=voice_wav, music=track, subs=subs,
+            media=media, effects=[sc.effect for sc in tl.scenes], atmosphere=tl.atmosphere, grade=tl.grade, scene_starts=starts, voice=voice_wav, music=track, subs=subs,
             font_file=font_file, work=work, out=out))
         timer.lap("render")
         thumb = work / "thumbnail.jpg"

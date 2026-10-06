@@ -225,7 +225,7 @@ function ScriptEditor({ job, onMake, error }: { job: PublicJob; onMake: (s: Scri
 
 const STEPS: { key: JobStatus; label: string }[] = [
   { key: "writing_script", label: "Writing script" },
-  { key: "making_images", label: "Finding footage & painting scenes" },
+  { key: "making_images", label: "Finding real footage" },
   { key: "recording_voice", label: "Recording voice & timing captions" },
   { key: "rendering", label: "Rendering video" },
   { key: "done", label: "Done" },
@@ -337,7 +337,7 @@ function Credits({ job }: { job: PublicJob }) {
   const unique = [...new Map(credits.map(([, c]) => [c.url, c])).values()];
   return (
     <p className="mt-6 text-xs leading-relaxed text-muted">
-      Footage and photos:{" "}
+      Footage:{" "}
       {unique.map((c, i) => (
         <span key={c.url}>
           {i > 0 && ", "}
@@ -346,11 +346,7 @@ function Credits({ job }: { job: PublicJob }) {
           </a>
         </span>
       ))}{" "}
-      on{" "}
-      <a href="https://www.pexels.com" target="_blank" rel="noreferrer" className="underline hover:text-foreground">
-        Pexels
-      </a>
-      .
+      via Pexels and Pixabay.
     </p>
   );
 }

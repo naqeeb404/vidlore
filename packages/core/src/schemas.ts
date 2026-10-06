@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { EFFECTS, LENGTHS, LIMITS, NICHE_IDS, STYLE_IDS, VISUALS_IDS, VOICE_IDS } from "./config";
+import { EFFECTS, LEGACY_STYLES, LENGTHS, LIMITS, NICHE_IDS, STYLE_IDS, VISUALS_IDS, VOICE_IDS } from "./config";
 
 export const createVideoInput = z.object({
   niche: z.enum(NICHE_IDS),
-  style: z.enum(STYLE_IDS),
+  style: z.preprocess((v) => (typeof v === "string" ? (LEGACY_STYLES[v] ?? v) : v), z.enum(STYLE_IDS)),
   voice: z.enum(VOICE_IDS),
   length: z.union([z.literal(LENGTHS[0]), z.literal(LENGTHS[1])]),
   topic: z
@@ -11,17 +11,31 @@ export const createVideoInput = z.object({
     .trim()
     .min(3, "Tell us a little more about the topic")
     .max(LIMITS.topicMaxLength, `Keep the topic under ${LIMITS.topicMaxLength} characters`),
-  visuals: z.enum(VISUALS_IDS).default("auto"),
+  visuals: z.enum(VISUALS_IDS).default("stock"),
 });
 export type CreateVideoInput = z.infer<typeof createVideoInput>;
 
-export const scene = z.object({
-  narration: z.string().trim().min(1).max(400),
-  imagePrompt: z.string().trim().min(1).max(1000),
-  /** 2-5 words to search stock footage; empty when the scene can't be filmed for real. */
-  stockQuery: z.string().trim().max(80).default(""),
-  effect: z.enum(EFFECTS).default("none"),
-});
+export const scene = z.preprocess(
+  // Jobs from before multi-query search stored a single `stockQuery`.
+  (v) => {
+    if (v && typeof v === "object" && !("stockQueries" in v) && "stockQuery" in v) {
+      const { stockQuery, ...rest } = v as { stockQuery?: string };
+      return { ...rest, stockQueries: stockQuery ? [stockQuery] : [] };
+    }
+    return v;
+  },
+  z.object({
+    narration: z.string().trim().min(1).max(400),
+    /** Used only for AI scenes (CLI "ai" mode). */
+    imagePrompt: z.string().trim().max(1000).default(""),
+    /** Stock footage searches for this scene, most specific first (2-5 words each). */
+    stockQueries: z
+      .array(z.string())
+      .default([])
+      .transform((qs) => qs.map((q) => q.trim().slice(0, 80)).filter(Boolean).slice(0, 4)),
+    effect: z.enum(EFFECTS).default("none"),
+  }),
+);
 export type Scene = z.infer<typeof scene>;
 
 export const script = z.object({
@@ -45,14 +59,18 @@ export const timeline = z.object({
         narration: z.string().min(1),
         /** Storage key of the scene image (AI scenes). */
         image: z.string().min(1).optional(),
-        /** Storage key of a real video clip (stock scenes). Takes precedence over image. */
+        /** Storage key of a real video clip. */
         video: z.string().min(1).optional(),
+        /** Remote URL of a real stock clip (Pexels/Pixabay CDN); the worker downloads it. */
+        videoUrl: z.string().url().optional(),
         effect: z.enum(EFFECTS).default("none"),
-      }).refine((sc) => sc.image || sc.video, "scene needs an image or a video"),
+      }).refine((sc) => sc.image || sc.video || sc.videoUrl, "scene needs an image or a video"),
     )
     .min(1),
   /** Moving overlays for AI scenes, e.g. ["fog", "dust", "grain"]. */
   atmosphere: z.array(z.string()).default([]),
+  /** Colour grade for the whole video (STYLES ids). */
+  grade: z.enum(STYLE_IDS).default("cinematic"),
   output: z.object({
     video: z.string(),
     thumbnail: z.string(),
@@ -89,8 +107,10 @@ export const job = z.object({
   imagesDone: z.number().int().min(0).default(0),
   durationSec: z.number().optional(),
   error: z.string().optional(),
-  /** Stock footage credits by scene index (Pexels requires attribution). */
-  credits: z.record(z.string(), z.object({ id: z.string().optional(), name: z.string(), url: z.string() })).default({}),
+  /** Stock footage credits by scene index (Pexels asks for attribution). */
+  credits: z
+    .record(z.string(), z.object({ id: z.string().optional(), name: z.string(), url: z.string(), source: z.string().optional() }))
+    .default({}),
   ownerTokenHash: z.string(),
   clientHash: z.string(),
 });

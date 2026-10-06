@@ -1,6 +1,7 @@
 import { cloudflareGenerateImage } from "./cloudflare";
 import { geminiWriteScript } from "./gemini";
 import { pexelsFindStockPhoto, pexelsFindStockVideo } from "./pexels";
+import { pixabayFindStockVideo } from "./pixabay";
 import type { FindStockPhoto, FindStockVideo, GenerateImage, WriteScript } from "./types";
 
 /** Provider registry. Add a new provider here and select it with an env var. */
@@ -22,21 +23,23 @@ export function getImageGenerator(): GenerateImage {
   }
 }
 
-/** Stock footage is optional: without a key every scene uses animated AI art. */
-export function getStockFinder(): FindStockVideo | null {
-  switch (process.env.STOCK_PROVIDER ?? "pexels") {
-    case "pexels":
-      return process.env.PEXELS_API_KEY ? pexelsFindStockVideo(process.env.PEXELS_API_KEY) : null;
-    case "none":
-      return null;
-    default:
-      throw new Error(`Unknown STOCK_PROVIDER ${process.env.STOCK_PROVIDER}`);
+/**
+ * Footage libraries to search, in order. STOCK_PROVIDERS="pexels,pixabay" (default: every library with a key).
+ * Each finder is tagged with its source for credits.
+ */
+export function getStockFinders(): { source: string; find: FindStockVideo }[] {
+  const wanted = (process.env.STOCK_PROVIDERS ?? "pexels,pixabay").split(",").map((s) => s.trim());
+  const finders: { source: string; find: FindStockVideo }[] = [];
+  for (const name of wanted) {
+    if (name === "pexels" && process.env.PEXELS_API_KEY) finders.push({ source: "Pexels", find: pexelsFindStockVideo(process.env.PEXELS_API_KEY) });
+    if (name === "pixabay" && process.env.PIXABAY_API_KEY) finders.push({ source: "Pixabay", find: pixabayFindStockVideo(process.env.PIXABAY_API_KEY) });
   }
+  return finders;
 }
 
 export function getStockPhotoFinder(): FindStockPhoto | null {
   const key = process.env.PEXELS_API_KEY;
-  return key && (process.env.STOCK_PROVIDER ?? "pexels") === "pexels" ? pexelsFindStockPhoto(key) : null;
+  return key ? pexelsFindStockPhoto(key) : null;
 }
 
 export type * from "./types";

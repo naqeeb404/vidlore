@@ -18,6 +18,14 @@ MOTIONS = {
 }
 SEQUENCE = ["pan_down", "zoom_out", "pan_right", "zoom_in", "pan_up"]
 
+# Colour grades for real footage (STYLES in packages/core/src/config.ts).
+GRADES = {
+    "cinematic": "colorbalance=rs=-0.04:bs=0.07:rh=0.07:bh=-0.07,eq=contrast=1.08:saturation=1.08,vignette=PI/5",
+    "moody": "eq=contrast=1.12:brightness=-0.04:saturation=0.72,colorbalance=bs=0.05:bm=0.03,vignette=PI/4",
+    "vintage": "curves=preset=vintage,eq=saturation=0.85:contrast=1.04,noise=alls=7:allf=t,vignette=PI/4",
+    "vivid": "eq=contrast=1.05:saturation=1.28,unsharp=5:5:0.5",
+}
+
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
     proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -46,12 +54,12 @@ def render_scene(image: Path, seconds: float, motion: str, out: Path) -> None:
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-an", str(out)])
 
 
-def render_stock(clip: Path, seconds: float, out: Path) -> None:
+def render_stock(clip: Path, seconds: float, out: Path, grade: str = "cinematic") -> None:
     """Fit a real footage clip to the scene: trim from near its start, or slow it down slightly if short."""
     frames = max(1, round(seconds * settings.FPS))
     w, h = settings.WIDTH, settings.HEIGHT
     vf = (f"scale={w}:{h}:force_original_aspect_ratio=increase:flags=lanczos,crop={w}:{h},setsar=1,"
-          f"fps={settings.FPS},eq=contrast=1.04:saturation=1.06,format=yuv420p")
+          f"fps={settings.FPS},{GRADES.get(grade, GRADES['cinematic'])},format=yuv420p")
     dur = probe_duration(clip)
     if dur >= seconds + 0.2:
         src = ["-ss", f"{min((dur - seconds) / 3, 1.5):.2f}", "-i", str(clip)]
@@ -64,7 +72,7 @@ def render_stock(clip: Path, seconds: float, out: Path) -> None:
          "-c:v", "libx264", "-preset", "ultrafast", "-crf", "14", "-an", str(out)])
 
 
-def render_video(*, media: list[tuple[str, Path]], effects: list[str], atmosphere: list[str], scene_starts: list[float], voice: Path, music: Path, subs: Path,
+def render_video(*, media: list[tuple[str, Path]], effects: list[str], atmosphere: list[str], grade: str, scene_starts: list[float], voice: Path, music: Path, subs: Path,
                  font_file: Path, work: Path, out: Path) -> float:
     total = probe_duration(voice) + settings.TAIL_SEC
     T = settings.TRANSITION_SEC
@@ -77,8 +85,8 @@ def render_video(*, media: list[tuple[str, Path]], effects: list[str], atmospher
         dur = bounds[i] - scene_starts[i] + (T if i > 0 else 0)
         out_clip = work / f"scene_{i:02d}.mp4"
         if kind == "video":
-            render_stock(src, dur, out_clip)
-            what = "real footage"
+            render_stock(src, dur, out_clip, grade)
+            what = f"real footage ({grade})"
         elif engine == "parallax":
             move = "push_in" if i == 0 else motion.SEQUENCE[(i - 1) % len(motion.SEQUENCE)]
             atmo = base_atmo | ({effects[i]} if effects[i] != "none" else set())

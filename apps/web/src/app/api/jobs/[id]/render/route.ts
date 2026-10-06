@@ -21,6 +21,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/jobs/[id]/rende
     script: job.script,
     niche: job.input.niche,
     voice: job.input.voice,
+    style: job.input.style,
     media,
     callbackUrl: `${appUrl(req)}/api/webhooks/render`,
   });

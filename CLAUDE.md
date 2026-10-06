@@ -35,5 +35,5 @@ Topic in, finished 1080×1920 MP4 out (Ken Burns scenes, word-synced captions, d
 - **Guardrails**: max 2 videos/user/day, 15/day global (`LIMITS` in `packages/core/src/config.ts`). Hitting a cap shows a friendly "Daily demo limit reached, come back tomorrow" message, never an error page.
 - **Security**: secrets server-only (never `NEXT_PUBLIC_*`); `.env` never committed; validate every input with zod; topic length limit + harmful-prompt block; verify webhook HMAC signature + timestamp; rate-limit generate endpoints; downloads via expiring signed URLs.
 - **Free-tier budget**: Cloudflare gives 10,000 neurons/day; flux-schnell at 4 steps is ~58 neurons per image. Keep `steps: 4`.
-- **Real video**: the user wants real video, not slideshows. Paid AI video APIs (Veo, Seedance) are off-limits; use stock footage + the depth-parallax camera engine.
+- **Real video only**: the user explicitly does not want image slideshows. Every web-app scene is a real filmed clip (Pexels/Pixabay, visuals mode "stock"). Paid AI video APIs (Veo, Seedance) are off-limits. AI images + the parallax engine exist only for the CLI's `--visuals ai`.
 - Out of scope: accounts, payments, credits, scheduling, auto-posting, teams, admin, emails.

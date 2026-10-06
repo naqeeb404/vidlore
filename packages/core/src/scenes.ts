@@ -1,70 +1,92 @@
-import type { VisualsId } from "./config";
-import { getImageGenerator, getStockFinder, getStockPhotoFinder, QuotaExceededError } from "./providers";
+import { getNiche, type NicheId, type VisualsId } from "./config";
+import { getImageGenerator, getStockFinders, getStockPhotoFinder, QuotaExceededError } from "./providers";
 import type { Scene } from "./schemas";
 import { getStorage, keys } from "./storage";
 
-export type SceneAsset = { kind: "video" | "image"; credit?: { id: string; name: string; url: string } };
+export type Credit = { id: string; name: string; url: string; source: string };
+export type SceneAsset = { kind: "video" | "image"; credit?: Credit };
+
+/** A real clip chosen for a scene. The render worker downloads `url` itself (no storage cost). */
+type ClipRef = { url: string; duration: number; credit: Credit };
+
+export class NoFootageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NoFootageError";
+  }
+}
 
 /**
- * Make (or reuse) the visual for one scene:
- *   1. a real stock clip, when the scene can be filmed and the visuals mode allows it;
- *   2. otherwise an AI image (animated later by the worker's 3D camera engine);
- *   3. if the AI image allowance is used up for today: a stock clip anyway, then a real stock photo
- *      (also animated by the 3D camera), so one exhausted free tier doesn't stop the video.
- * Idempotent: an existing asset is kept, so retries never redo finished scenes.
+ * Pick (or reuse) the visual for one scene. Idempotent: an existing choice is kept, so retries
+ * never redo finished scenes.
+ *
+ * - "stock" (the product default): a real filmed clip for every scene. Tries the scene's own searches
+ *   (specific → broad) in every footage library, then the niche's generic b-roll. Never an image.
+ * - "auto": real footage when the scene's searches match, otherwise an AI image.
+ * - "ai": AI image (animated by the worker's 3D camera); real photo if the AI allowance is used up.
  */
 export async function makeSceneAsset(opts: {
   jobId: string;
   n: number;
   scene: Scene;
+  niche: NicheId;
   visuals: VisualsId;
-  /** Stock clip ids already used in this video. */
+  /** Clip ids already used in this video, so no clip repeats. */
   exclude: string[];
 }): Promise<SceneAsset> {
   const { jobId, n, scene, visuals } = opts;
   const storage = getStorage();
+  const existing = await storage.get(keys.sceneClip(jobId, n));
+  if (existing) return { kind: "video", credit: (JSON.parse(new TextDecoder().decode(existing)) as ClipRef).credit };
   if (await storage.exists(keys.sceneVideo(jobId, n))) return { kind: "video" };
   if (await storage.exists(keys.scene(jobId, n))) return { kind: "image" };
 
-  const tryStockClip = async (query: string): Promise<SceneAsset | null> => {
-    const finder = getStockFinder();
-    if (!finder || !query) return null;
-    try {
-      const words = scene.narration.split(/\s+/).filter(Boolean).length;
-      const clip = await finder({ query, minSeconds: words / 2.5 + 0.8, exclude: opts.exclude });
-      if (!clip) return null;
-      await storage.put(keys.sceneVideo(jobId, n), await download(clip.url), "video/mp4");
-      return { kind: "video", credit: { id: clip.id, ...clip.credit } };
-    } catch (err) {
-      console.warn(`[scene ${n}] stock footage unavailable:`, (err as Error).message);
-      return null;
+  if (visuals !== "ai") {
+    const queries = [...scene.stockQueries];
+    if (visuals === "stock") queries.push(...getNiche(opts.niche).footage);
+    const clip = await findClip(queries, scene, opts.exclude);
+    if (clip) {
+      await storage.put(keys.sceneClip(jobId, n), JSON.stringify(clip), "application/json");
+      return { kind: "video", credit: clip.credit };
     }
-  };
-
-  const triedStock = visuals !== "ai" && Boolean(scene.stockQuery);
-  if (triedStock) {
-    const clip = await tryStockClip(scene.stockQuery);
-    if (clip) return clip;
+    if (visuals === "stock") {
+      throw new NoFootageError(
+        getStockFinders().length === 0
+          ? "Real footage isn't set up yet (missing PEXELS_API_KEY / PIXABAY_API_KEY)."
+          : `No footage found for scene ${n + 1}.`,
+      );
+    }
   }
 
   try {
-    const img = await getImageGenerator()({ prompt: scene.imagePrompt });
+    const img = await getImageGenerator()({ prompt: scene.imagePrompt || scene.stockQueries[0] || scene.narration });
     await storage.put(keys.scene(jobId, n), img.bytes, img.contentType);
     return { kind: "image" };
   } catch (err) {
     if (!(err instanceof QuotaExceededError)) throw err;
-    // Today's AI image allowance is gone: fall back to real footage, then a real photo.
-    const query = scene.stockQuery || plainQuery(scene.imagePrompt);
-    if (!triedStock) {
-      const clip = await tryStockClip(query);
-      if (clip) return clip;
-    }
     const photos = getStockPhotoFinder();
-    const photo = photos ? await photos({ query }).catch(() => null) : null;
+    const photo = photos ? await photos({ query: scene.stockQueries[0] ?? scene.narration }).catch(() => null) : null;
     if (!photo) throw err;
     await storage.put(keys.scene(jobId, n), await download(photo.url), "image/jpeg");
-    return { kind: "image", credit: { id: photo.id, ...photo.credit } };
+    return { kind: "image", credit: { id: photo.id, ...photo.credit, source: "Pexels" } };
   }
+}
+
+async function findClip(queries: string[], scene: Scene, exclude: string[]): Promise<ClipRef | null> {
+  const finders = getStockFinders();
+  const words = scene.narration.split(/\s+/).filter(Boolean).length;
+  const minSeconds = words / 2.5 + 0.8;
+  for (const query of [...new Set(queries)]) {
+    for (const { source, find } of finders) {
+      try {
+        const clip = await find({ query, minSeconds, exclude });
+        if (clip) return { url: clip.url, duration: clip.duration, credit: { id: clip.id, source, ...clip.credit } };
+      } catch (err) {
+        console.warn(`[footage] ${source} "${query}":`, (err as Error).message);
+      }
+    }
+  }
+  return null;
 }
 
 async function download(url: string): Promise<Uint8Array> {
@@ -73,24 +95,13 @@ async function download(url: string): Promise<Uint8Array> {
   return new Uint8Array(await res.arrayBuffer());
 }
 
-/** "A lone lighthouse on a cliff at night, waves crashing, ..." -> "lone lighthouse cliff night" */
-function plainQuery(prompt: string): string {
-  const stop = new Set(["a", "an", "the", "of", "on", "in", "at", "with", "and", "vertical", "portrait", "close-up", "shot"]);
-  return prompt
-    .split(",")[0]!
-    .toLowerCase()
-    .replace(/[^a-z\s-]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w && !stop.has(w))
-    .slice(0, 5)
-    .join(" ");
-}
-
-/** Which asset each scene ended up with, for the render timeline. */
+/** What each scene ended up with, for the render timeline. */
 export async function sceneMedia(jobId: string, count: number) {
   const storage = getStorage();
   return Promise.all(
-    Array.from({ length: count }, async (_, n) => {
+    Array.from({ length: count }, async (_, n): Promise<{ image?: string; video?: string; videoUrl?: string } | null> => {
+      const ref = await storage.get(keys.sceneClip(jobId, n));
+      if (ref) return { videoUrl: (JSON.parse(new TextDecoder().decode(ref)) as ClipRef).url };
       if (await storage.exists(keys.sceneVideo(jobId, n))) return { video: keys.sceneVideo(jobId, n) };
       if (await storage.exists(keys.scene(jobId, n))) return { image: keys.scene(jobId, n) };
       return null;

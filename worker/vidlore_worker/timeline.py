@@ -10,6 +10,7 @@ class SceneSpec:
     narration: str
     image: Optional[str] = None
     video: Optional[str] = None
+    video_url: Optional[str] = None
     effect: str = "none"
 
 
@@ -27,16 +28,17 @@ class Timeline:
     work_prefix: str
     callback_url: Optional[str]
     atmosphere: list[str] = field(default_factory=list)
+    grade: str = "cinematic"
 
     @staticmethod
     def parse(data: dict) -> "Timeline":
         if data.get("version") != 1:
             raise ValueError("Unsupported timeline version")
         scenes = [
-            SceneSpec(s["narration"], s.get("image"), s.get("video"), s.get("effect") or "none")
+            SceneSpec(s["narration"], s.get("image"), s.get("video"), s.get("videoUrl"), s.get("effect") or "none")
             for s in data["scenes"]
         ]
-        if not scenes or any(not (s.image or s.video) for s in scenes):
+        if not scenes or any(not (s.image or s.video or s.video_url) for s in scenes):
             raise ValueError("Every scene needs an image or a video")
         out = data["output"]
         return Timeline(
@@ -52,4 +54,5 @@ class Timeline:
             work_prefix=out["workPrefix"],
             callback_url=(data.get("callback") or {}).get("url"),
             atmosphere=list(data.get("atmosphere") or []),
+            grade=data.get("grade") or "cinematic",
         )

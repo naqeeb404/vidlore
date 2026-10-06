@@ -1,4 +1,4 @@
-import { makeSceneAsset, QuotaExceededError, sceneMedia } from "@vidlore/core/server";
+import { makeSceneAsset, NoFootageError, QuotaExceededError, sceneMedia } from "@vidlore/core/server";
 import { fail, json } from "@/server/http";
 import { getJob, isOwner, saveJob, toPublic } from "@/server/jobs";
 import { rateLimit } from "@/server/rate-limit";
@@ -9,7 +9,7 @@ export const maxDuration = 26;
 const QUOTA_MESSAGE = "Today's free AI image allowance is used up. It resets at midnight UTC.";
 
 /**
- * Make one scene's visual: a real stock clip or an AI image. One short request per scene keeps
+ * Pick one scene's real footage clip (or AI image in the CLI's "ai" mode). One short request per scene keeps
  * every call well under the function timeout.
  */
 export async function POST(req: Request, ctx: RouteContext<"/api/jobs/[id]/scenes/[n]">) {
@@ -30,6 +30,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/jobs/[id]/scene
       jobId: id,
       n,
       scene,
+      niche: job.input.niche,
       visuals: job.input.visuals,
       exclude: Object.values(job.credits).flatMap((c) => (c.id ? [c.id] : [])),
     });
@@ -43,6 +44,9 @@ export async function POST(req: Request, ctx: RouteContext<"/api/jobs/[id]/scene
     } catch (err2) {
       if (err2 instanceof QuotaExceededError) return fail(429, QUOTA_MESSAGE, "image_quota");
       console.error("[scene] failed", err2);
+      if (err2 instanceof NoFootageError) {
+        return fail(502, "We couldn't find real footage for this scene. Try editing its text, or try again.", "no_footage");
+      }
       return fail(502, "We couldn't make this scene. Please try again.", "scene_failed");
     }
   }

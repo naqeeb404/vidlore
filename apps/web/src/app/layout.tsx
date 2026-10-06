@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 const grotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-grotesk", display: "swap", weight: ["500", "700"] });
 
 const description =
-  "Turn any topic into a finished faceless short video: script, scenes, voiceover, word-by-word captions and music. Ready for TikTok, Reels and Shorts.";
+  "Turn any topic into a finished faceless short video: script, real footage, voiceover, word-by-word captions and music. Ready for TikTok, Reels and Shorts.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL || `https://${BRAND.domain}`),

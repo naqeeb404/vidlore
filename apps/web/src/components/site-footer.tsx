@@ -18,9 +18,13 @@ export function SiteFooter() {
         </nav>
       </div>
       <p className="pb-8 text-center text-xs text-muted">
-        © {new Date().getFullYear()} {BRAND.name}. Scripts, voices and painted scenes are AI-generated. Real footage provided by{" "}
+        © {new Date().getFullYear()} {BRAND.name}. Scripts and voices are AI-generated. Footage from{" "}
         <a href="https://www.pexels.com" target="_blank" rel="noreferrer" className="underline hover:text-foreground">
           Pexels
+        </a>{" "}
+        and{" "}
+        <a href="https://pixabay.com" target="_blank" rel="noreferrer" className="underline hover:text-foreground">
+          Pixabay
         </a>
         .
       </p>

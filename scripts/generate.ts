@@ -1,6 +1,6 @@
 /**
  * End-to-end CLI: topic -> script (Gemini) -> scene visuals (Pexels footage / Cloudflare images) -> voice/captions/render (worker).
- *   pnpm generate --topic "The dancing plague of 1518" --niche history --style cinematic --voice am_michael --length 60
+ *   pnpm generate --topic "The dancing plague of 1518" --niche history --style cinematic --voice am_michael --length 60 [--visuals stock|auto|ai]
  */
 import { randomUUID } from "node:crypto";
 import { copyFile, mkdir } from "node:fs/promises";
@@ -28,7 +28,7 @@ const { values } = parseArgs({
     style: { type: "string", default: "cinematic" },
     voice: { type: "string" },
     length: { type: "string", default: "60" },
-    visuals: { type: "string", default: "auto" },
+    visuals: { type: "string", default: "stock" },
     out: { type: "string", default: "out" },
   },
 });
@@ -71,16 +71,16 @@ console.log("▸ Making scene visuals…");
 const used: string[] = [];
 for (const [n, scene] of script.scenes.entries()) {
   const asset = await retryOnce(`scene ${n + 1}`, () =>
-    makeSceneAsset({ jobId, n, scene, visuals: input.visuals, exclude: used }),
+    makeSceneAsset({ jobId, n, scene, niche: input.niche, visuals: input.visuals, exclude: used }),
   );
   if (asset.credit) used.push(asset.credit.id);
-  const what = asset.kind === "video" ? `real footage by ${asset.credit?.name ?? "Pexels"}` : "AI scene";
+  const what = asset.kind === "video" ? `real footage by ${asset.credit?.name ?? "?"} (${asset.credit?.source ?? "stock"})` : "AI scene";
   console.log(`  ${n + 1}/${script.scenes.length} ${what} (${elapsed()})`);
 }
 
 console.log("▸ Recording voice, timing captions and rendering…");
 const media = await sceneMedia(jobId, script.scenes.length);
-const tl = buildTimeline({ jobId, script, niche: input.niche, voice: input.voice, media });
+const tl = buildTimeline({ jobId, script, niche: input.niche, voice: input.voice, style: input.style, media });
 await storage.put(keys.timeline(jobId), JSON.stringify(tl, null, 2), "application/json");
 await getRenderer()(tl, keys.timeline(jobId));
 

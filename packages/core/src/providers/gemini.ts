@@ -13,11 +13,11 @@ const RESPONSE_SCHEMA = {
         type: "OBJECT",
         properties: {
           narration: { type: "STRING" },
+          stockQueries: { type: "ARRAY", items: { type: "STRING" } },
           imagePrompt: { type: "STRING" },
-          stockQuery: { type: "STRING" },
           effect: { type: "STRING", enum: [...EFFECTS] },
         },
-        required: ["narration", "imagePrompt", "stockQuery", "effect"],
+        required: ["narration", "stockQueries", "imagePrompt", "effect"],
       },
     },
   },
@@ -46,9 +46,10 @@ Rules:
 - Narration is plain spoken English with normal punctuation (commas, full stops), which the voice uses for pacing. No emojis, hashtags, stage directions, speaker labels or markdown.
 - Write numbers and abbreviations the way they should be spoken.
 - The last scene lands the ending (twist, takeaway or call to action).
-- imagePrompt describes ONE striking vertical (portrait 9:16) image for that scene: subject, setting, composition, lighting, mood. Keep characters consistent across scenes by repeating their key visual traits. No text, letters, logos or watermarks in the image. Do not name the art style; it is added separately.
-- stockQuery: 2-5 plain English words to search a stock-footage library for a REAL filmed vertical clip that fits this scene (e.g. "foggy forest at night", "ocean waves aerial", "old city street rain", "man running sunrise"). Describe something a camera could actually film today: generic scenery, objects, nature, people from behind, places. Use "" when no real footage could fit (fantasy creatures, specific historical people, gore, impossible events).
-- effect: one moving atmosphere for the scene if it fits the mood: "fog", "dust", "embers", "rain", "snow", or "none".
+- The video is cut from REAL filmed stock footage (Pexels/Pixabay), one clip per scene. Write each scene so it can be shown with real b-roll: places, nature, weather, objects, hands, silhouettes, people seen from behind, crowds, cities, ruins, documents, light and shadow. For things no camera can film (monsters, gods, specific historical people), show them indirectly: a shadow in a doorway, storm clouds, an old statue, a candle-lit manuscript.
+- stockQueries: exactly 3 searches for that scene's clip, most specific first, broadest last. 2-4 plain English words each, naming what is visible on screen, e.g. ["flashlight dark hospital corridor", "empty hospital hallway", "dark corridor"]. No names of people or brands, no abstract words like "fear" or "success" on their own.
+- imagePrompt: one sentence describing the same shot as a still image (backup only).
+- effect: "none" unless rain, snow or fog is clearly part of the scene ("rain", "snow", "fog").
 - title is a short catchy video title (max 60 characters).
 - Keep it suitable for a general audience: no graphic violence, sexual content, hate or real-person defamation.`;
 

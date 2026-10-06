@@ -2,20 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Clapperboard, Layers, Loader2, Pause, Play, Wand2 } from "lucide-react";
+import { ArrowRight, Loader2, Pause, Play } from "lucide-react";
 import {
   getNiche,
   LENGTHS,
   LIMITS,
   NICHES,
   STYLES,
-  VISUALS,
   VOICES,
   type LengthSec,
   type NicheId,
   type PublicJob,
   type StyleId,
-  type VisualsId,
   type VoiceId,
 } from "@vidlore/core";
 import { LimitReached } from "@/components/limit-reached";
@@ -24,14 +22,6 @@ import { api, ApiError } from "@/lib/api";
 import { saveVideo } from "@/lib/my-videos";
 import { cn } from "@/lib/utils";
 
-const STYLE_SWATCH: Record<StyleId, string> = {
-  cinematic: "linear-gradient(135deg,#1c2a3a,#b07a3c 60%,#f3d39a)",
-  anime: "linear-gradient(135deg,#ff8fb1,#7c5cff 55%,#5ce1ff)",
-  "dark-fantasy": "linear-gradient(135deg,#07070c,#3b1d5a 55%,#9a3cff)",
-  comic: "repeating-linear-gradient(45deg,#ffd23f 0 6px,#ffe58a 6px 12px)",
-};
-
-const VISUAL_ICON: Record<VisualsId, typeof Layers> = { auto: Layers, stock: Clapperboard, ai: Wand2 };
 
 const WAIT_MESSAGES = [
   "Writing your script…",
@@ -48,7 +38,6 @@ export function CreateForm() {
   const [voice, setVoice] = useState<VoiceId>(getNiche("scary").voice);
   const [voiceTouched, setVoiceTouched] = useState(false);
   const [length, setLength] = useState<LengthSec>(30);
-  const [visuals, setVisuals] = useState<VisualsId>("auto");
   const [topic, setTopic] = useState("");
   const [busy, setBusy] = useState(false);
   const [waitIdx, setWaitIdx] = useState(0);
@@ -80,7 +69,7 @@ export function CreateForm() {
     try {
       const res = await api<{ job: PublicJob; ownerToken: string }>("/api/jobs", {
         method: "POST",
-        body: JSON.stringify({ niche, style, voice, length, topic, visuals }),
+        body: JSON.stringify({ niche, style, voice, length, topic, visuals: "stock" }),
       });
       saveVideo({ id: res.job.id, token: res.ownerToken, createdAt: res.job.createdAt });
       router.push(`/v/${res.job.id}`);
@@ -108,40 +97,19 @@ export function CreateForm() {
         </div>
       </Field>
 
-      <Field label="2. Art style">
+      <Field label="2. Look">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {STYLES.map((s) => (
             <Choice key={s.id} selected={style === s.id} onClick={() => setStyle(s.id)} className="p-2">
-              <span className="block aspect-[4/3] rounded-xl" style={{ background: STYLE_SWATCH[s.id] }} aria-hidden="true" />
-              <span className="mt-2 block px-1 pb-1 font-semibold">{s.label}</span>
+              <span className="block aspect-[4/3] rounded-xl" style={{ background: s.swatch }} aria-hidden="true" />
+              <span className="mt-2 block px-1 font-semibold">{s.label}</span>
+              <span className="block px-1 pb-1 text-xs text-muted">{s.description}</span>
             </Choice>
           ))}
         </div>
       </Field>
 
-      <Field label="3. Visuals">
-        <div className="grid gap-3 sm:grid-cols-3">
-          {VISUALS.map((v) => {
-            const Icon = VISUAL_ICON[v.id];
-            return (
-              <Choice key={v.id} selected={visuals === v.id} onClick={() => setVisuals(v.id)}>
-                <Icon className="size-5 text-primary" aria-hidden="true" />
-                <span className="mt-2 block font-semibold">{v.label}</span>
-                <span className="mt-1 block text-sm text-muted">{v.description}</span>
-              </Choice>
-            );
-          })}
-        </div>
-        <p className="mt-2 text-xs text-muted">
-          Real footage comes from{" "}
-          <a href="https://www.pexels.com" target="_blank" rel="noreferrer" className="underline hover:text-foreground">
-            Pexels
-          </a>
-          . AI scenes move with a 3D camera, plus fog, dust or embers to match the mood.
-        </p>
-      </Field>
-
-      <Field label="4. Voice">
+      <Field label="3. Voice">
         <div className="grid gap-3 sm:grid-cols-2">
           {VOICES.map((v) => (
             <Choice
@@ -163,7 +131,7 @@ export function CreateForm() {
         </div>
       </Field>
 
-      <Field label="5. Topic" htmlFor="topic">
+      <Field label="4. Topic" htmlFor="topic">
         <textarea
           id="topic"
           value={topic}

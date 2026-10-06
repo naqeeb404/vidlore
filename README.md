@@ -6,7 +6,9 @@ Everything runs on free tiers or open source: Gemini Flash (script), Pexels (rea
 
 ## How scenes become video
 
-For each scene Gemini writes the narration, an image prompt and a stock-footage search phrase. If the scene can be filmed for real (and the visitor picked *Mix* or *Real footage*), a matching vertical clip is pulled from Pexels. Otherwise an AI image is painted and the worker's camera engine (`worker/vidlore_worker/motion.py`) turns it into a shot: Depth Anything estimates depth, and a virtual camera pushes in, orbits or cranes with real parallax, with drifting fog, dust, embers, rain or snow layered in.
+Every scene is a real filmed clip. Gemini writes each line as filmable b-roll with three searches (specific → broad); `makeSceneAsset` (`packages/core/src/scenes.ts`) tries them on Pexels and Pixabay, then the niche's generic b-roll, and never repeats a clip. Only the clip URL is stored; the render worker downloads it, trims or gently slows it to the narration, and applies the chosen colour grade (Cinematic, Dark & moody, Vintage film, Vivid). 30-second videos have 8 cuts, 60-second videos 14.
+
+The CLI can still make AI-image scenes (`--visuals ai`), animated by the 2.5D camera engine (`worker/vidlore_worker/motion.py`).
 
 ## Status
 
@@ -39,7 +41,8 @@ Copy `.env.example` to `.env`. For the fixture renders no keys are needed; for `
 | `GEMINI_API_KEY` | https://aistudio.google.com/apikey |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → Workers & Pages (right sidebar) |
 | `CLOUDFLARE_API_TOKEN` | My Profile → API Tokens → "Workers AI" template |
-| `PEXELS_API_KEY` (optional) | https://www.pexels.com/api/ — free; enables real stock footage. Without it every scene is an animated AI scene. |
+| `PEXELS_API_KEY` | https://www.pexels.com/api/ — free. Real footage library #1. |
+| `PIXABAY_API_KEY` | https://pixabay.com/api/docs/ — free. Real footage library #2 (more coverage). |
 
 The first render downloads the Kokoro model (~350 MB), Whisper `base.en` (~150 MB) and Depth Anything V2 Small (~100 MB) into `worker/models/`.
 

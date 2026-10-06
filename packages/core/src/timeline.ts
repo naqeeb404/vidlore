@@ -1,4 +1,4 @@
-import { getNiche, getVoice, type NicheId, type VoiceId } from "./config";
+import { getNiche, getVoice, type NicheId, type StyleId, type VoiceId } from "./config";
 import type { Script, Timeline } from "./schemas";
 import { keys } from "./storage";
 
@@ -7,8 +7,9 @@ export function buildTimeline(opts: {
   script: Script;
   niche: NicheId;
   voice: VoiceId;
+  style: StyleId;
   /** Per scene: the stored image or video key (see sceneMedia). */
-  media: ({ image?: string; video?: string } | null)[];
+  media: ({ image?: string; video?: string; videoUrl?: string } | null)[];
   callbackUrl?: string;
 }): Timeline {
   const { jobId, script, niche, voice, media } = opts;
@@ -21,6 +22,7 @@ export function buildTimeline(opts: {
     speed: 1,
     music: getNiche(niche).music,
     atmosphere: [...getNiche(niche).atmosphere],
+    grade: opts.style,
     scenes: script.scenes.map((s, i) => {
       const m = media[i];
       if (!m) throw new Error(`Scene ${i + 1} has no image or video yet`);
