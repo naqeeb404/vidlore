@@ -100,7 +100,7 @@ class Atmosphere:
         if "grain" in kinds:
             self.grain = []
             for _ in range(6):
-                n = self.rng.normal(0, 6, (HH, HW)).astype(np.float32)
+                n = self.rng.normal(0, 3.5, (HH, HW)).astype(np.float32)
                 n = cv2.resize(n, (W, H), interpolation=cv2.INTER_NEAREST)
                 pos, neg = np.clip(n, 0, 255).astype(np.uint8), np.clip(-n, 0, 255).astype(np.uint8)
                 self.grain.append((cv2.merge([pos] * 3), cv2.merge([neg] * 3)))

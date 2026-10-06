@@ -122,7 +122,7 @@ def render_video(*, media: list[tuple[str, Path]], effects: list[str], atmospher
 
     run([settings.FFMPEG, "-y", "-hide_banner", *inputs, "-filter_complex", ";".join(graph),
          "-map", "[v]", "-map", "[a]", "-t", f"{total:.3f}",
-         "-c:v", "libx264", "-profile:v", "high", "-preset", "faster", "-crf", "20", "-pix_fmt", "yuv420p",
+         "-c:v", "libx264", "-profile:v", "high", "-preset", "faster", "-crf", "21", "-maxrate", "8M", "-bufsize", "16M", "-pix_fmt", "yuv420p",
          "-r", str(settings.FPS), "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
          "-movflags", "+faststart", str(out.resolve())], cwd=work)
     return total
