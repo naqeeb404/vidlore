@@ -10,6 +10,9 @@ type PixabayVideo = {
   videos: Record<"large" | "medium" | "small" | "tiny", { url: string; width: number; height: number; size: number }>;
 };
 
+const NOT_FOOTAGE =
+  /\b(animation|animated|cartoon|comic|illustration|drawing|sketch|anime|motion graphics?|3d render|rendering|vector|2d|loop background|abstract background|glitch|particles?)\b/i;
+
 /**
  * Pixabay free API (100 requests/minute). Free for commercial use, no attribution required (we credit anyway).
  * https://pixabay.com/api/docs/#api_search_videos
@@ -26,6 +29,8 @@ export function pixabayFindStockVideo(apiKey: string): FindStockVideo {
     const candidates: (StockClip & { score: number })[] = [];
     for (const v of data.hits ?? []) {
       if (exclude.includes(`pixabay-${v.id}`)) continue;
+      // Pixabay also hosts cartoons and motion graphics; we only want filmed footage.
+      if (NOT_FOOTAGE.test(v.tags ?? "")) continue;
       const rel = relevance(query, v.tags ?? "");
       if (rel.hits < rel.needed) continue; // loose match, e.g. an ocean for "dark hallway"
       const files = Object.values(v.videos).filter((f) => f.url && f.width && f.height);
