@@ -1,6 +1,6 @@
 node_modules/
 .next/
-out/
+/out/
 dist/
 .netlify/
 *.tsbuildinfo
@@ -15,4 +15,4 @@ worker/models/
 __pycache__/
 *.pyc
 .cache/
-storage/
+/storage/
