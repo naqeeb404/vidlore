@@ -12,7 +12,7 @@ type PixabayVideo = {
  * Pixabay free API (100 requests/minute). Free for commercial use, no attribution required (we credit anyway).
  * https://pixabay.com/api/docs/#api_search_videos
  * Pixabay has no orientation filter for videos: we take vertical clips, or 4K landscape clips whose centre
- * crop is still sharp at 1080×1920.
+ * crop is still sharp at 1080×1920, and HD landscape clips only when nothing better matches.
  */
 export function pixabayFindStockVideo(apiKey: string): FindStockVideo {
   return async ({ query, minSeconds, exclude }) => {
@@ -27,9 +27,12 @@ export function pixabayFindStockVideo(apiKey: string): FindStockVideo {
       const files = Object.values(v.videos).filter((f) => f.url && f.width && f.height);
       const vertical = files.filter((f) => f.height > f.width && f.height >= 1280).sort((a, b) => Math.abs(a.height - 1920) - Math.abs(b.height - 1920))[0];
       const landscape4k = files.filter((f) => f.width > f.height && f.height >= 2160).sort((a, b) => a.size - b.size)[0];
-      const file = vertical ?? landscape4k;
+      // Last resort: an HD landscape clip, centre-cropped to vertical (softer, but still real footage).
+      const landscapeHd = files.filter((f) => f.width > f.height && f.height >= 1080).sort((a, b) => b.height - a.height)[0];
+      const file = vertical ?? landscape4k ?? landscapeHd;
       if (!file) continue;
-      const score = (v.duration >= minSeconds ? 100 : (v.duration / minSeconds) * 50) + (vertical ? 10 : 0) - candidates.length;
+      const quality = vertical ? 20 : landscape4k ? 10 : 0;
+      const score = (v.duration >= minSeconds ? 100 : (v.duration / minSeconds) * 50) + quality - candidates.length;
       candidates.push({
         id: `pixabay-${v.id}`,
         url: file.url,
