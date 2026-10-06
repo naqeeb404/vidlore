@@ -26,3 +26,9 @@ FFPROBE = os.environ.get("FFPROBE", "ffprobe")
 SCENE_PAUSE_SEC = 0.35
 TAIL_SEC = 0.9
 TRANSITION_SEC = 0.3
+
+# Depth Anything V2 Small (Apache-2.0) for the 2.5D camera engine.
+DEPTH_MODEL_URL = os.environ.get(
+    "DEPTH_MODEL_URL",
+    "https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/main/onnx/model.onnx",
+)

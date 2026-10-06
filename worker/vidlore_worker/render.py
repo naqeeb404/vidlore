@@ -1,4 +1,4 @@
-"""render: FFmpeg. Ken Burns per scene, crossfades, karaoke captions, ducked music."""
+"""render: FFmpeg. Real footage or 3D-camera AI shots per scene, crossfades, karaoke captions, ducked music."""
 from __future__ import annotations
 
 import json
@@ -7,7 +7,7 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import settings
+from . import motion, settings
 
 MOTIONS = {
     "zoom_in": ("1+0.16*on/{N}", "(iw-iw/zoom)/2", "(ih-ih/zoom)/2"),
@@ -46,21 +46,54 @@ def render_scene(image: Path, seconds: float, motion: str, out: Path) -> None:
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-an", str(out)])
 
 
-def render_video(*, images: list[Path], scene_starts: list[float], voice: Path, music: Path, subs: Path,
+def render_stock(clip: Path, seconds: float, out: Path) -> None:
+    """Fit a real footage clip to the scene: trim from near its start, or slow it down slightly if short."""
+    frames = max(1, round(seconds * settings.FPS))
+    w, h = settings.WIDTH, settings.HEIGHT
+    vf = (f"scale={w}:{h}:force_original_aspect_ratio=increase:flags=lanczos,crop={w}:{h},setsar=1,"
+          f"fps={settings.FPS},eq=contrast=1.04:saturation=1.06,format=yuv420p")
+    dur = probe_duration(clip)
+    if dur >= seconds + 0.2:
+        src = ["-ss", f"{min((dur - seconds) / 3, 1.5):.2f}", "-i", str(clip)]
+    elif seconds / dur <= 1.8:
+        src = ["-i", str(clip)]
+        vf = f"setpts={seconds / dur:.4f}*PTS," + vf  # gentle slow motion reads as cinematic
+    else:
+        src = ["-stream_loop", "-1", "-i", str(clip)]
+    run([settings.FFMPEG, "-y", "-hide_banner", *src, "-vf", vf, "-frames:v", str(frames),
+         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "14", "-an", str(out)])
+
+
+def render_video(*, media: list[tuple[str, Path]], effects: list[str], atmosphere: list[str], scene_starts: list[float], voice: Path, music: Path, subs: Path,
                  font_file: Path, work: Path, out: Path) -> float:
     total = probe_duration(voice) + settings.TAIL_SEC
     T = settings.TRANSITION_SEC
     bounds = scene_starts[1:] + [total]
-    jobs = []
-    for i, image in enumerate(images):
+    engine = os.environ.get("CAMERA_ENGINE", "parallax")
+    base_atmo = set(atmosphere)
+
+    def make(i: int) -> Path:
+        kind, src = media[i]
         dur = bounds[i] - scene_starts[i] + (T if i > 0 else 0)
-        motion = "zoom_in" if i == 0 else SEQUENCE[(i - 1) % len(SEQUENCE)]
-        jobs.append((image, dur, motion, work / f"scene_{i:02d}.mp4"))
-    # Each ffmpeg is mostly single-threaded (zoompan), so run a few side by side.
+        out_clip = work / f"scene_{i:02d}.mp4"
+        if kind == "video":
+            render_stock(src, dur, out_clip)
+            what = "real footage"
+        elif engine == "parallax":
+            move = "push_in" if i == 0 else motion.SEQUENCE[(i - 1) % len(motion.SEQUENCE)]
+            atmo = base_atmo | ({effects[i]} if effects[i] != "none" else set())
+            motion.render_parallax(src, dur, move, atmo, out_clip, seed=i)
+            what = f"3D camera {move} {sorted(atmo)}"
+        else:
+            move = "zoom_in" if i == 0 else SEQUENCE[(i - 1) % len(SEQUENCE)]
+            render_scene(src, dur, move, out_clip)
+            what = f"ken burns {move}"
+        print(f"[render] scene {i + 1}/{len(media)}: {what}, {dur:.1f}s")
+        return out_clip
+
+    # Scenes are independent; render a few side by side.
     with ThreadPoolExecutor(max_workers=max(1, min(4, (os.cpu_count() or 2) // 2 + 1))) as pool:
-        list(pool.map(lambda j: render_scene(*j), jobs))
-    clips = [j[3] for j in jobs]
-    print(f"[render] {len(clips)} scene clips ready")
+        clips = list(pool.map(make, range(len(media))))
 
     fonts = work / "fonts"
     fonts.mkdir(exist_ok=True)

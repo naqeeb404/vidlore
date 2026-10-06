@@ -16,7 +16,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Callable, TypeVar
 
-from . import captions, music, render, thumbnail, transcribe, voice
+from . import captions, music, render, settings, thumbnail, transcribe, voice
 from .fonts import find_font
 from .storage import get_storage
 from .timeline import Timeline
@@ -65,14 +65,15 @@ def main() -> int:
     timer = Timer()
     try:
         # 1. Inputs
-        images: list[Path] = []
+        media: list[tuple[str, Path]] = []
         for i, sc in enumerate(tl.scenes):
-            data = storage.get(sc.image)
+            kind, key = ("video", sc.video) if sc.video else ("image", sc.image)
+            data = storage.get(key)
             if data is None:
-                raise RuntimeError(f"Missing scene image {sc.image}")
-            p = work / f"image_{i:02d}.jpg"
+                raise RuntimeError(f"Missing scene {kind} {key}")
+            p = work / (f"clip_{i:02d}.mp4" if kind == "video" else f"image_{i:02d}.jpg")
             p.write_bytes(data)
-            images.append(p)
+            media.append((kind, p))
 
         # 2. Voice + word timings (cached in storage so retries skip them)
         report("voice")
@@ -111,11 +112,16 @@ def main() -> int:
         report("rendering")
         out = work / "video.mp4"
         total = retry_once("render", lambda: render.render_video(
-            images=images, scene_starts=starts, voice=voice_wav, music=track, subs=subs,
+            media=media, effects=[sc.effect for sc in tl.scenes], atmosphere=tl.atmosphere, scene_starts=starts, voice=voice_wav, music=track, subs=subs,
             font_file=font_file, work=work, out=out))
         timer.lap("render")
         thumb = work / "thumbnail.jpg"
-        thumbnail.make_thumbnail(images[0], tl.title, font_file, thumb)
+        cover = media[0][1]
+        if media[0][0] == "video":  # grab a frame from the opening shot
+            cover = work / "cover.jpg"
+            render.run([settings.FFMPEG, "-y", "-hide_banner", "-ss", "1", "-i", str(work / "scene_00.mp4"),
+                        "-frames:v", "1", "-q:v", "2", str(cover)])
+        thumbnail.make_thumbnail(cover, tl.title, font_file, thumb)
 
         # 5. Upload
         storage.put(tl.video_key, out.read_bytes(), "video/mp4")

@@ -1,14 +1,16 @@
 """Mirror of the TypeScript `timeline` schema in packages/core/src/schemas.ts."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
 @dataclass
 class SceneSpec:
     narration: str
-    image: str
+    image: Optional[str] = None
+    video: Optional[str] = None
+    effect: str = "none"
 
 
 @dataclass
@@ -24,14 +26,18 @@ class Timeline:
     thumbnail_key: str
     work_prefix: str
     callback_url: Optional[str]
+    atmosphere: list[str] = field(default_factory=list)
 
     @staticmethod
     def parse(data: dict) -> "Timeline":
         if data.get("version") != 1:
             raise ValueError("Unsupported timeline version")
-        scenes = [SceneSpec(s["narration"], s["image"]) for s in data["scenes"]]
-        if not scenes:
-            raise ValueError("Timeline has no scenes")
+        scenes = [
+            SceneSpec(s["narration"], s.get("image"), s.get("video"), s.get("effect") or "none")
+            for s in data["scenes"]
+        ]
+        if not scenes or any(not (s.image or s.video) for s in scenes):
+            raise ValueError("Every scene needs an image or a video")
         out = data["output"]
         return Timeline(
             job_id=data["jobId"],
@@ -45,4 +51,5 @@ class Timeline:
             thumbnail_key=out["thumbnail"],
             work_prefix=out["workPrefix"],
             callback_url=(data.get("callback") or {}).get("url"),
+            atmosphere=list(data.get("atmosphere") or []),
         )
