@@ -7,7 +7,7 @@ Everything runs on free tiers or open source: Gemini Flash (script), Cloudflare 
 ## Status
 
 - [x] Milestone 1 — render worker + CLI
-- [ ] Milestone 2 — web app
+- [x] Milestone 2 — web app (no accounts: create, watch, download)
 - [ ] Milestone 3 — deploy (Netlify + Cloud Run)
 
 ## Local setup
@@ -37,6 +37,16 @@ Copy `.env.example` to `.env`. For the fixture renders no keys are needed; for `
 | `CLOUDFLARE_API_TOKEN` | My Profile → API Tokens → "Workers AI" template |
 
 The first render downloads the Kokoro model (~350 MB) and Whisper `base.en` (~150 MB) into `worker/models/`.
+
+## Web app
+
+```bash
+pnpm --filter @vidlore/web dev
+```
+
+Open http://localhost:3000. The app reads the root `.env`; also set `RENDER_WEBHOOK_SECRET`, `FILE_SIGNING_SECRET` and `CLIENT_HASH_SALT` to long random strings (see `.env.example`). Locally, files live in `./storage` and the render worker runs as a background process that reports back through the signed webhook.
+
+There are no accounts. Visitors create a video, watch it and download it; "My videos" is remembered in their browser.
 
 ## Commands
 
