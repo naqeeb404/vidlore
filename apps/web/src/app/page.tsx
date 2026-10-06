@@ -21,12 +21,12 @@ import { PLANS } from "@/content/pricing";
 
 const STEPS = [
   { icon: Wand2, title: "Pick a niche and topic", body: "Scary stories, history, motivation, fun facts or mythology. Type a topic or tap a suggestion." },
-  { icon: Mic, title: "Choose a style and voice", body: "Four art styles and four natural voices. Review and edit the script before anything is rendered." },
+  { icon: Mic, title: "Choose style, visuals and voice", body: "Real footage, animated AI scenes or a mix, plus four natural voices. Review and edit the script before rendering." },
   { icon: Download, title: "Get your video", body: "In a few minutes you get a vertical MP4 with motion, captions and music, ready to post." },
 ];
 
 const FEATURES = [
-  { icon: Film, title: "Motion on every scene", body: "Slow cinematic zooms and pans bring each AI-painted scene to life, with smooth crossfades between them." },
+  { icon: Film, title: "Real footage + 3D camera motion", body: "Filmed stock clips where a scene can be filmed. Everywhere else, AI scenes get a depth-aware 3D camera move with drifting fog, dust or embers." },
   { icon: Captions, title: "Word-by-word captions", body: "Bold captions timed to the voice, with the spoken word highlighted, so viewers keep watching with the sound off." },
   { icon: AudioLines, title: "Natural voices + music", body: "Expressive narration with background music that automatically dips under the voice." },
   { icon: Clapperboard, title: "Ready for every platform", body: "1080×1920 MP4 (H.264 + AAC), 30 or 60 seconds. Upload as-is to TikTok, Instagram Reels and YouTube Shorts." },
@@ -74,8 +74,7 @@ export default function Home() {
               Turn any topic into a <span className="text-gradient">viral-ready short</span> in minutes.
             </h1>
             <p className="mt-5 max-w-xl text-lg text-muted">
-              Vidlore writes the script, paints the scenes, records the voiceover and syncs the captions. You just pick the
-              topic.
+              Vidlore writes the script, finds real footage or brings AI scenes to life, records the voiceover and syncs the captions. You just pick the topic.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">

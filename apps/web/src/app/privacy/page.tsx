@@ -21,7 +21,7 @@ export default function PrivacyPage() {
       <h2>Service providers</h2>
       <p>
         Your topic and script are sent to Google Gemini to write the script and to Cloudflare Workers AI to paint the
-        scenes. Files are stored with Cloudflare R2 and the site is hosted on Netlify. Voice, captions and rendering run
+        scenes, and short search phrases are sent to Pexels to find stock footage. Files are stored with Cloudflare R2 and the site is hosted on Netlify. Voice, captions and rendering run
         on our own open-source pipeline.
       </p>
       <h2>Retention and deletion</h2>

@@ -2,7 +2,11 @@
 
 **Stories that tell themselves.** Pick a niche, a style and a voice, type a topic — Vidlore writes the script, paints the scenes, records the voiceover, syncs word-by-word captions and renders a 1080×1920 MP4 ready for TikTok, Reels and Shorts.
 
-Everything runs on free tiers or open source: Gemini Flash (script), Cloudflare Workers AI flux-1-schnell (images), Kokoro (voice), faster-whisper (caption timing), FFmpeg (render).
+Everything runs on free tiers or open source: Gemini Flash (script), Pexels (real stock footage), Cloudflare Workers AI flux-1-schnell (AI scenes), Depth Anything V2 (3D camera motion for AI scenes), Kokoro (voice), faster-whisper (caption timing), FFmpeg (render).
+
+## How scenes become video
+
+For each scene Gemini writes the narration, an image prompt and a stock-footage search phrase. If the scene can be filmed for real (and the visitor picked *Mix* or *Real footage*), a matching vertical clip is pulled from Pexels. Otherwise an AI image is painted and the worker's camera engine (`worker/vidlore_worker/motion.py`) turns it into a shot: Depth Anything estimates depth, and a virtual camera pushes in, orbits or cranes with real parallax, with drifting fog, dust, embers, rain or snow layered in.
 
 ## Status
 
@@ -35,8 +39,9 @@ Copy `.env.example` to `.env`. For the fixture renders no keys are needed; for `
 | `GEMINI_API_KEY` | https://aistudio.google.com/apikey |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → Workers & Pages (right sidebar) |
 | `CLOUDFLARE_API_TOKEN` | My Profile → API Tokens → "Workers AI" template |
+| `PEXELS_API_KEY` (optional) | https://www.pexels.com/api/ — free; enables real stock footage. Without it every scene is an animated AI scene. |
 
-The first render downloads the Kokoro model (~350 MB) and Whisper `base.en` (~150 MB) into `worker/models/`.
+The first render downloads the Kokoro model (~350 MB), Whisper `base.en` (~150 MB) and Depth Anything V2 Small (~100 MB) into `worker/models/`.
 
 ## Web app
 

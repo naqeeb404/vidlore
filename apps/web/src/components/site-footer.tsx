@@ -17,7 +17,13 @@ export function SiteFooter() {
           <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
         </nav>
       </div>
-      <p className="pb-8 text-center text-xs text-muted">© {new Date().getFullYear()} {BRAND.name}. Videos are AI-generated.</p>
+      <p className="pb-8 text-center text-xs text-muted">
+        © {new Date().getFullYear()} {BRAND.name}. Scripts, voices and painted scenes are AI-generated. Real footage provided by{" "}
+        <a href="https://www.pexels.com" target="_blank" rel="noreferrer" className="underline hover:text-foreground">
+          Pexels
+        </a>
+        .
+      </p>
     </footer>
   );
 }

@@ -1,11 +1,16 @@
-import { getImageGenerator, getStorage, keys, QuotaExceededError } from "@vidlore/core/server";
+import { makeSceneAsset, QuotaExceededError, sceneMedia } from "@vidlore/core/server";
 import { fail, json } from "@/server/http";
 import { getJob, isOwner, saveJob, toPublic } from "@/server/jobs";
 import { rateLimit } from "@/server/rate-limit";
 
 export const maxDuration = 26;
 
-/** Generate one scene image. One short request per scene keeps every call well under the function timeout. */
+const LIMIT_MESSAGE = "Daily demo limit reached, come back tomorrow.";
+
+/**
+ * Make one scene's visual: a real stock clip or an AI image. One short request per scene keeps
+ * every call well under the function timeout.
+ */
 export async function POST(req: Request, ctx: RouteContext<"/api/jobs/[id]/scenes/[n]">) {
   const { id, n: nParam } = await ctx.params;
   const job = await getJob(id);
@@ -19,30 +24,32 @@ export async function POST(req: Request, ctx: RouteContext<"/api/jobs/[id]/scene
     return json({ job: await toPublic(job) });
   }
 
-  const storage = getStorage();
-  const key = keys.scene(id, n);
-  if (!(await storage.exists(key))) {
-    const generate = getImageGenerator();
-    let img;
+  const make = () =>
+    makeSceneAsset({
+      jobId: id,
+      n,
+      scene,
+      visuals: job.input.visuals,
+      exclude: Object.values(job.credits).flatMap((c) => (c.id ? [c.id] : [])),
+    });
+  let asset;
+  try {
+    asset = await make();
+  } catch (err) {
+    if (err instanceof QuotaExceededError) return fail(429, LIMIT_MESSAGE, "daily_limit");
     try {
-      img = await generate({ prompt: scene.imagePrompt });
-    } catch (err) {
-      if (err instanceof QuotaExceededError) return fail(429, "Daily demo limit reached, come back tomorrow.", "daily_limit");
-      try {
-        img = await generate({ prompt: scene.imagePrompt });
-      } catch (err) {
-        if (err instanceof QuotaExceededError) return fail(429, "Daily demo limit reached, come back tomorrow.", "daily_limit");
-        console.error("[scene] image failed", err);
-        return fail(502, "We couldn't paint this scene. Please try again.", "image_failed");
-      }
+      asset = await make(); // retry once
+    } catch (err2) {
+      if (err2 instanceof QuotaExceededError) return fail(429, LIMIT_MESSAGE, "daily_limit");
+      console.error("[scene] failed", err2);
+      return fail(502, "We couldn't make this scene. Please try again.", "scene_failed");
     }
-    await storage.put(key, img.bytes, img.contentType);
   }
 
-  const total = job.script!.scenes.length;
-  const done = (await Promise.all(job.script!.scenes.map((_, i) => storage.exists(keys.scene(id, i))))).filter(Boolean).length;
+  if (asset.credit) job.credits[String(n)] = asset.credit;
+  const media = await sceneMedia(id, job.script!.scenes.length);
   job.status = "making_images";
-  job.imagesDone = Math.min(done, total);
+  job.imagesDone = media.filter(Boolean).length;
   delete job.error;
   await saveJob(job);
   return json({ job: await toPublic(job) });

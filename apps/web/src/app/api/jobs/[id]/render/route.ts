@@ -1,4 +1,4 @@
-import { buildTimeline, getRenderer, getStorage, keys } from "@vidlore/core/server";
+import { buildTimeline, getRenderer, getStorage, keys, sceneMedia } from "@vidlore/core/server";
 import { appUrl } from "@/server/env";
 import { fail, json } from "@/server/http";
 import { getJob, isOwner, saveJob, toPublic } from "@/server/jobs";
@@ -13,20 +13,18 @@ export async function POST(req: Request, ctx: RouteContext<"/api/jobs/[id]/rende
   }
   if (!job.script) return fail(409, "This video has no script yet.");
 
-  const storage = getStorage();
-  const missing = (
-    await Promise.all(job.script.scenes.map((_, i) => storage.exists(keys.scene(id, i))))
-  ).some((ok) => !ok);
-  if (missing) return fail(409, "Some scenes are still being painted.");
+  const media = await sceneMedia(id, job.script.scenes.length);
+  if (media.some((m) => !m)) return fail(409, "Some scenes are still being made.");
 
   const timeline = buildTimeline({
     jobId: id,
     script: job.script,
     niche: job.input.niche,
     voice: job.input.voice,
+    media,
     callbackUrl: `${appUrl(req)}/api/webhooks/render`,
   });
-  await storage.put(keys.timeline(id), JSON.stringify(timeline), "application/json");
+  await getStorage().put(keys.timeline(id), JSON.stringify(timeline), "application/json");
 
   job.status = "recording_voice";
   delete job.error;

@@ -224,7 +224,7 @@ function ScriptEditor({ job, onMake, error }: { job: PublicJob; onMake: (s: Scri
 
 const STEPS: { key: JobStatus; label: string }[] = [
   { key: "writing_script", label: "Writing script" },
-  { key: "making_images", label: "Painting scenes" },
+  { key: "making_images", label: "Finding footage & painting scenes" },
   { key: "recording_voice", label: "Recording voice & timing captions" },
   { key: "rendering", label: "Rendering video" },
   { key: "done", label: "Done" },
@@ -315,6 +315,7 @@ function Finished({ job }: { job: PublicJob }) {
           <li>Ready for TikTok, Instagram Reels and YouTube Shorts.</li>
           <li>Tip: turn on each platform's "AI-generated" label when you post.</li>
         </ul>
+        <Credits job={job} />
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild variant="ghost">
             <Link href="/create">Make another</Link>
@@ -325,6 +326,31 @@ function Finished({ job }: { job: PublicJob }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Pexels asks us to credit the videographers whose clips appear in the video. */
+function Credits({ job }: { job: PublicJob }) {
+  const credits = Object.entries(job.credits ?? {}).sort(([a], [b]) => Number(a) - Number(b));
+  if (credits.length === 0) return null;
+  const unique = [...new Map(credits.map(([, c]) => [c.url, c])).values()];
+  return (
+    <p className="mt-6 text-xs leading-relaxed text-muted">
+      Real footage:{" "}
+      {unique.map((c, i) => (
+        <span key={c.url}>
+          {i > 0 && ", "}
+          <a href={c.url} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
+            {c.name}
+          </a>
+        </span>
+      ))}{" "}
+      on{" "}
+      <a href="https://www.pexels.com" target="_blank" rel="noreferrer" className="underline hover:text-foreground">
+        Pexels
+      </a>
+      .
+    </p>
   );
 }
 

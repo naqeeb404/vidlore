@@ -39,6 +39,7 @@ export async function POST(req: Request) {
     status: "writing_script",
     input,
     imagesDone: 0,
+    credits: {},
     ownerTokenHash: owner.hash,
     clientHash: client,
   };
