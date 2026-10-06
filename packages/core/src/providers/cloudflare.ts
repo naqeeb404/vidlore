@@ -1,5 +1,5 @@
 import { requireEnv } from "./env";
-import type { GenerateImage } from "./types";
+import { QuotaExceededError, type GenerateImage } from "./types";
 
 /**
  * Cloudflare Workers AI text-to-image. flux-1-schnell returns a square JPEG (base64);
@@ -11,7 +11,8 @@ export const cloudflareGenerateImage: GenerateImage = async ({ prompt, seed }) =
   const token = requireEnv("CLOUDFLARE_API_TOKEN");
   const model = process.env.CLOUDFLARE_IMAGE_MODEL || "@cf/black-forest-labs/flux-1-schnell";
 
-  const body: Record<string, unknown> = { prompt: prompt.slice(0, 2048), steps: 8 };
+  // schnell is distilled for 4 steps; 4 steps = ~58 neurons per image, so ~170 images fit the free 10k/day.
+  const body: Record<string, unknown> = { prompt: prompt.slice(0, 2048), steps: 4 };
   // flux-1-schnell rejects size fields; other models get native portrait output.
   if (!model.includes("flux-1-schnell")) Object.assign(body, { width: 720, height: 1280 });
   if (seed !== undefined) body.seed = seed;
@@ -23,7 +24,10 @@ export const cloudflareGenerateImage: GenerateImage = async ({ prompt, seed }) =
   });
   const contentType = res.headers.get("content-type") ?? "";
   if (!res.ok) {
-    throw new Error(`Cloudflare image request failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
+    const text = await res.text();
+    // 4006 = daily free neuron allocation used up.
+    if (res.status === 429 && text.includes("4006")) throw new QuotaExceededError("Cloudflare Workers AI");
+    throw new Error(`Cloudflare image request failed (${res.status}): ${text.slice(0, 300)}`);
   }
   // Some models stream raw image bytes, flux returns JSON with base64.
   if (contentType.startsWith("image/")) {

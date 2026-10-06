@@ -23,4 +23,16 @@ export interface RenderResult {
   /** Present when the renderer ran synchronously (local/docker). Cloud Run reports back via webhook. */
   done: boolean;
 }
-export type Render = (timeline: Timeline, timelineKey: string) => Promise<RenderResult>;
+export type Render = (
+  timeline: Timeline,
+  timelineKey: string,
+  opts?: { background?: boolean },
+) => Promise<RenderResult>;
+
+/** A free-tier provider allowance is used up for today. The UI shows the daily-limit message. */
+export class QuotaExceededError extends Error {
+  constructor(provider: string) {
+    super(`${provider} daily free allowance used up`);
+    this.name = "QuotaExceededError";
+  }
+}

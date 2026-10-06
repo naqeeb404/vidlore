@@ -22,3 +22,4 @@ export function getImageGenerator(): GenerateImage {
 }
 
 export type * from "./types";
+export { QuotaExceededError } from "./types";
