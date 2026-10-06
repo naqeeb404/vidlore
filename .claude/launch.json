@@ -4,7 +4,21 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@vidlore/web", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@vidlore/web",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "web-share",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@vidlore/web",
+        "share"
+      ],
       "port": 3000
     }
   ]

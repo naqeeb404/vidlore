@@ -11,10 +11,13 @@ CANDIDATES = [
     ("Montserrat Black", "Montserrat-Black.ttf"),
     ("Anton", "Anton-Regular.ttf"),
     ("Arial Black", "ariblk.ttf"),
+    ("Arial Black", "Arial Black.ttf"),  # macOS
     ("DejaVu Sans", "DejaVuSans-Bold.ttf"),
 ]
 SYSTEM_DIRS = [
     Path("C:/Windows/Fonts"),
+    Path("/System/Library/Fonts/Supplemental"),  # macOS
+    Path("/Library/Fonts"),
     Path("/usr/share/fonts/truetype/montserrat"),
     Path("/usr/share/fonts/truetype/dejavu"),
     Path("/usr/share/fonts"),

@@ -17,7 +17,10 @@ export function localRender(mode: "local" | "docker"): Render {
     const [cmd, args] =
       mode === "local"
         ? [
-            fromRoot(process.env.WORKER_PYTHON ?? "./worker/.venv/Scripts/python.exe"),
+            fromRoot(
+              process.env.WORKER_PYTHON ||
+                (process.platform === "win32" ? "./worker/.venv/Scripts/python.exe" : "./worker/.venv/bin/python"),
+            ),
             ["-m", "vidlore_worker", "--timeline", timelineKey],
           ]
         : [

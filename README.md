@@ -16,6 +16,37 @@ The CLI can still make AI-image scenes (`--visuals ai`), animated by the 2.5D ca
 - [x] Milestone 2 — web app (no accounts: create, watch, download)
 - [ ] Milestone 3 — deploy (Netlify + Cloud Run)
 
+## Run on a Mac (quick start)
+
+1. Install the tools with [Homebrew](https://brew.sh):
+
+   ```bash
+   brew install node@22 pnpm python@3.12 ffmpeg git
+   ```
+
+2. Get the code and install dependencies:
+
+   ```bash
+   git clone <repo-url> vidlore && cd vidlore
+   pnpm install
+   python3.12 -m venv worker/.venv
+   worker/.venv/bin/pip install -r worker/requirements.txt
+   ```
+
+3. Create `.env` (random secrets are filled in for you), then open it and set `GEMINI_API_KEY` and `PIXABAY_API_KEY`:
+
+   ```bash
+   pnpm setup:env
+   ```
+
+4. Start the app and open http://localhost:3000:
+
+   ```bash
+   pnpm dev
+   ```
+
+The first video downloads the voice and caption models (~500 MB) into `worker/models/`, so it takes a few extra minutes. After that, a 30-second video takes about 2–4 minutes on an Apple Silicon Mac.
+
 ## Local setup
 
 Prerequisites: Node 20+, pnpm 10, Python 3.12, FFmpeg on `PATH` (Windows: `winget install Gyan.FFmpeg`). Docker is optional locally.

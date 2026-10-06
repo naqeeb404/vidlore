@@ -8,27 +8,27 @@ FPS = 30
 WIDTH, HEIGHT = 1080, 1920
 SAMPLE_RATE = 24000  # Kokoro output rate
 
-MODELS_DIR = Path(os.environ.get("MODELS_DIR", WORKER_DIR / "models"))
-KOKORO_MODEL_URL = os.environ.get(
-    "KOKORO_MODEL_URL",
-    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx",
+MODELS_DIR = Path(os.environ.get("MODELS_DIR") or WORKER_DIR / "models")
+KOKORO_MODEL_URL = (
+    os.environ.get("KOKORO_MODEL_URL")
+    or "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"
 )
-KOKORO_VOICES_URL = os.environ.get(
-    "KOKORO_VOICES_URL",
-    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin",
+KOKORO_VOICES_URL = (
+    os.environ.get("KOKORO_VOICES_URL")
+    or "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
 )
-WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "base.en")
+WHISPER_MODEL = os.environ.get("WHISPER_MODEL") or "base.en"
 
-FONTS_DIR = Path(os.environ.get("FONTS_DIR", REPO_DIR / "assets" / "fonts"))
-FFMPEG = os.environ.get("FFMPEG", "ffmpeg")
-FFPROBE = os.environ.get("FFPROBE", "ffprobe")
+FONTS_DIR = Path(os.environ.get("FONTS_DIR") or REPO_DIR / "assets" / "fonts")
+FFMPEG = os.environ.get("FFMPEG") or "ffmpeg"
+FFPROBE = os.environ.get("FFPROBE") or "ffprobe"
 
 SCENE_PAUSE_SEC = 0.35
 TAIL_SEC = 0.9
 TRANSITION_SEC = 0.3
 
 # Depth Anything V2 Small (Apache-2.0) for the 2.5D camera engine.
-DEPTH_MODEL_URL = os.environ.get(
-    "DEPTH_MODEL_URL",
-    "https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/main/onnx/model.onnx",
+DEPTH_MODEL_URL = (
+    os.environ.get("DEPTH_MODEL_URL")
+    or "https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/main/onnx/model.onnx"
 )
