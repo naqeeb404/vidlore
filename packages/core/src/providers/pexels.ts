@@ -1,3 +1,4 @@
+import { relevance } from "./relevance";
 import type { FindStockPhoto, FindStockVideo, StockClip } from "./types";
 
 /** Pexels photo search, used when the AI image allowance is used up. */
@@ -38,13 +39,16 @@ export function pexelsFindStockVideo(apiKey: string): FindStockVideo {
     const candidates: (StockClip & { score: number })[] = [];
     for (const v of data.videos ?? []) {
       if (exclude.includes(String(v.id)) || v.height < v.width) continue;
+      // Pexels page URLs describe the clip: /video/man-walking-in-a-dark-hallway-12345/
+      const rel = relevance(query, v.url.split("/video/")[1] ?? "");
+      if (rel.hits < rel.needed) continue;
       // Prefer a true 1080×1920 MP4; never pull 4K files (slow to download, no visible gain at 1080p).
       const file = v.video_files
         .filter((f) => f.file_type === "video/mp4" && f.width && f.height && f.height >= 1280 && f.height <= 2160 && f.height > f.width)
         .sort((a, b) => Math.abs((a.height ?? 0) - 1920) - Math.abs((b.height ?? 0) - 1920))[0];
       if (!file) continue;
       // Long-enough clips first, then the order Pexels ranks them in.
-      const score = (v.duration >= minSeconds ? 100 : (v.duration / minSeconds) * 50) - candidates.length;
+      const score = (v.duration >= minSeconds ? 100 : (v.duration / minSeconds) * 50) + rel.hits * 25 - candidates.length;
       candidates.push({
         id: String(v.id),
         url: file.link,

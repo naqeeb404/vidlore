@@ -1,9 +1,11 @@
+import { relevance } from "./relevance";
 import type { FindStockVideo, StockClip } from "./types";
 
 type PixabayVideo = {
   id: number;
   pageURL: string;
   duration: number;
+  tags: string;
   user: string;
   videos: Record<"large" | "medium" | "small" | "tiny", { url: string; width: number; height: number; size: number }>;
 };
@@ -24,6 +26,8 @@ export function pixabayFindStockVideo(apiKey: string): FindStockVideo {
     const candidates: (StockClip & { score: number })[] = [];
     for (const v of data.hits ?? []) {
       if (exclude.includes(`pixabay-${v.id}`)) continue;
+      const rel = relevance(query, v.tags ?? "");
+      if (rel.hits < rel.needed) continue; // loose match, e.g. an ocean for "dark hallway"
       const files = Object.values(v.videos).filter((f) => f.url && f.width && f.height);
       const vertical = files.filter((f) => f.height > f.width && f.height >= 1280).sort((a, b) => Math.abs(a.height - 1920) - Math.abs(b.height - 1920))[0];
       const landscape4k = files.filter((f) => f.width > f.height && f.height >= 2160).sort((a, b) => a.size - b.size)[0];
@@ -32,7 +36,7 @@ export function pixabayFindStockVideo(apiKey: string): FindStockVideo {
       const file = vertical ?? landscape4k ?? landscapeHd;
       if (!file) continue;
       const quality = vertical ? 20 : landscape4k ? 10 : 0;
-      const score = (v.duration >= minSeconds ? 100 : (v.duration / minSeconds) * 50) + quality - candidates.length;
+      const score = (v.duration >= minSeconds ? 100 : (v.duration / minSeconds) * 50) + quality + rel.hits * 25 - candidates.length;
       candidates.push({
         id: `pixabay-${v.id}`,
         url: file.url,
