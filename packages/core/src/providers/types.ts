@@ -29,6 +29,18 @@ export type Render = (
   opts?: { background?: boolean },
 ) => Promise<RenderResult>;
 
+export interface StockClip {
+  id: string;
+  /** Direct download URL of the chosen file. */
+  url: string;
+  width: number;
+  height: number;
+  duration: number;
+  credit: { name: string; url: string };
+}
+/** Find one real, vertical stock video clip. Returns null when nothing fits. */
+export type FindStockVideo = (input: { query: string; minSeconds: number; exclude: string[] }) => Promise<StockClip | null>;
+
 /** A free-tier provider allowance is used up for today. The UI shows the daily-limit message. */
 export class QuotaExceededError extends Error {
   constructor(provider: string) {

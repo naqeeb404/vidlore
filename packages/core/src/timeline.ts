@@ -7,9 +7,11 @@ export function buildTimeline(opts: {
   script: Script;
   niche: NicheId;
   voice: VoiceId;
+  /** Per scene: the stored image or video key (see sceneMedia). */
+  media: ({ image?: string; video?: string } | null)[];
   callbackUrl?: string;
 }): Timeline {
-  const { jobId, script, niche, voice } = opts;
+  const { jobId, script, niche, voice, media } = opts;
   return {
     version: 1,
     jobId,
@@ -18,7 +20,12 @@ export function buildTimeline(opts: {
     lang: getVoice(voice).lang,
     speed: 1,
     music: getNiche(niche).music,
-    scenes: script.scenes.map((s, i) => ({ narration: s.narration, image: keys.scene(jobId, i) })),
+    atmosphere: [...getNiche(niche).atmosphere],
+    scenes: script.scenes.map((s, i) => {
+      const m = media[i];
+      if (!m) throw new Error(`Scene ${i + 1} has no image or video yet`);
+      return { narration: s.narration, effect: s.effect, ...m };
+    }),
     output: { video: keys.video(jobId), thumbnail: keys.thumbnail(jobId), workPrefix: keys.work(jobId) },
     ...(opts.callbackUrl ? { callback: { url: opts.callbackUrl } } : {}),
   };

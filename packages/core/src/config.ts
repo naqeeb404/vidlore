@@ -18,6 +18,20 @@ export const LIMITS = {
 
 export type MusicMood = "dark" | "uplift" | "mystery" | "warm";
 
+/** Moving overlays the render worker can add on AI scenes (worker/vidlore_worker/motion.py). */
+export const EFFECTS = ["none", "fog", "dust", "embers", "rain", "snow"] as const;
+export type Effect = (typeof EFFECTS)[number];
+export type Atmosphere = Effect | "grain" | "flicker";
+
+/** Where scene visuals come from. "auto" = real stock footage when a scene can be filmed, else AI art. */
+export const VISUALS = [
+  { id: "auto", label: "Mix", description: "Real footage where it fits, animated AI scenes elsewhere" },
+  { id: "stock", label: "Real footage", description: "Filmed stock clips for every scene we can match" },
+  { id: "ai", label: "AI scenes", description: "Painted scenes brought to life with 3D camera motion" },
+] as const;
+export type VisualsId = (typeof VISUALS)[number]["id"];
+export const VISUALS_IDS = VISUALS.map((v) => v.id) as [VisualsId, ...VisualsId[]];
+
 export const NICHES = [
   {
     id: "scary",
@@ -25,6 +39,7 @@ export const NICHES = [
     emoji: "🕯️",
     music: "dark",
     voice: "am_fenrir",
+    atmosphere: ["fog", "dust", "flicker", "grain"],
     guidance:
       "A short first-person or campfire-style horror story with a creeping build-up and a chilling twist at the end. Unsettling, never gory.",
     suggestions: [
@@ -39,6 +54,7 @@ export const NICHES = [
     emoji: "🏛️",
     music: "mystery",
     voice: "am_michael",
+    atmosphere: ["dust", "grain"],
     guidance:
       "A gripping, accurate mini-documentary about a real historical event or person. Lead with the most surprising fact. Avoid made-up details.",
     suggestions: [
@@ -53,6 +69,7 @@ export const NICHES = [
     emoji: "🔥",
     music: "uplift",
     voice: "am_michael",
+    atmosphere: ["dust"],
     guidance:
       "An energetic, second-person motivational piece with one clear idea, a vivid example and a strong call to action.",
     suggestions: [
@@ -67,6 +84,7 @@ export const NICHES = [
     emoji: "🧠",
     music: "warm",
     voice: "af_heart",
+    atmosphere: ["dust"],
     guidance:
       "A fast-paced list of surprising, true facts around one theme. Each fact punchy and easy to picture.",
     suggestions: [
@@ -81,6 +99,7 @@ export const NICHES = [
     emoji: "⚡",
     music: "mystery",
     voice: "bf_emma",
+    atmosphere: ["embers", "fog", "grain"],
     guidance:
       "An epic retelling of a myth or legend with vivid imagery and a clear moral or ending.",
     suggestions: [
@@ -95,6 +114,7 @@ export const NICHES = [
   emoji: string;
   music: MusicMood;
   voice: string;
+  atmosphere: readonly Atmosphere[];
   guidance: string;
   suggestions: readonly string[];
 }>;

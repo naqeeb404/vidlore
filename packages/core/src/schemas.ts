@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LENGTHS, LIMITS, NICHE_IDS, STYLE_IDS, VOICE_IDS } from "./config";
+import { EFFECTS, LENGTHS, LIMITS, NICHE_IDS, STYLE_IDS, VISUALS_IDS, VOICE_IDS } from "./config";
 
 export const createVideoInput = z.object({
   niche: z.enum(NICHE_IDS),
@@ -11,12 +11,16 @@ export const createVideoInput = z.object({
     .trim()
     .min(3, "Tell us a little more about the topic")
     .max(LIMITS.topicMaxLength, `Keep the topic under ${LIMITS.topicMaxLength} characters`),
+  visuals: z.enum(VISUALS_IDS).default("auto"),
 });
 export type CreateVideoInput = z.infer<typeof createVideoInput>;
 
 export const scene = z.object({
   narration: z.string().trim().min(1).max(400),
   imagePrompt: z.string().trim().min(1).max(1000),
+  /** 2-5 words to search stock footage; empty when the scene can't be filmed for real. */
+  stockQuery: z.string().trim().max(80).default(""),
+  effect: z.enum(EFFECTS).default("none"),
 });
 export type Scene = z.infer<typeof scene>;
 
@@ -39,11 +43,16 @@ export const timeline = z.object({
     .array(
       z.object({
         narration: z.string().min(1),
-        /** Storage key of the scene image. */
-        image: z.string().min(1),
-      }),
+        /** Storage key of the scene image (AI scenes). */
+        image: z.string().min(1).optional(),
+        /** Storage key of a real video clip (stock scenes). Takes precedence over image. */
+        video: z.string().min(1).optional(),
+        effect: z.enum(EFFECTS).default("none"),
+      }).refine((sc) => sc.image || sc.video, "scene needs an image or a video"),
     )
     .min(1),
+  /** Moving overlays for AI scenes, e.g. ["fog", "dust", "grain"]. */
+  atmosphere: z.array(z.string()).default([]),
   output: z.object({
     video: z.string(),
     thumbnail: z.string(),
@@ -80,6 +89,8 @@ export const job = z.object({
   imagesDone: z.number().int().min(0).default(0),
   durationSec: z.number().optional(),
   error: z.string().optional(),
+  /** Stock footage credits by scene index (Pexels requires attribution). */
+  credits: z.record(z.string(), z.object({ id: z.string().optional(), name: z.string(), url: z.string() })).default({}),
   ownerTokenHash: z.string(),
   clientHash: z.string(),
 });

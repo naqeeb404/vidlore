@@ -1,20 +1,21 @@
 /**
- * End-to-end CLI: topic -> script (Gemini) -> images (Cloudflare) -> voice/captions/render (worker).
+ * End-to-end CLI: topic -> script (Gemini) -> scene visuals (Pexels footage / Cloudflare images) -> voice/captions/render (worker).
  *   pnpm generate --topic "The dancing plague of 1518" --niche history --style cinematic --voice am_michael --length 60
  */
 import { randomUUID } from "node:crypto";
 import { copyFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { createVideoInput, getNiche, NICHE_IDS, STYLE_IDS, VOICE_IDS } from "@vidlore/core";
+import { createVideoInput, getNiche, NICHE_IDS, STYLE_IDS, VISUALS_IDS, VOICE_IDS } from "@vidlore/core";
 import {
   buildTimeline,
-  getImageGenerator,
   getRenderer,
   getScriptWriter,
   getStorage,
   keys,
   LocalStorage,
+  makeSceneAsset,
+  sceneMedia,
 } from "@vidlore/core/server";
 import { loadEnv } from "./lib/env";
 
@@ -27,12 +28,13 @@ const { values } = parseArgs({
     style: { type: "string", default: "cinematic" },
     voice: { type: "string" },
     length: { type: "string", default: "60" },
+    visuals: { type: "string", default: "auto" },
     out: { type: "string", default: "out" },
   },
 });
 
 if (!values.topic) {
-  console.error(`Usage: pnpm generate --topic "..." [--niche ${NICHE_IDS.join("|")}] [--style ${STYLE_IDS.join("|")}] [--voice ${VOICE_IDS.join("|")}] [--length 30|60]`);
+  console.error(`Usage: pnpm generate --topic "..." [--niche ${NICHE_IDS.join("|")}] [--style ${STYLE_IDS.join("|")}] [--voice ${VOICE_IDS.join("|")}] [--length 30|60] [--visuals ${VISUALS_IDS.join("|")}]`);
   process.exit(1);
 }
 
@@ -43,6 +45,7 @@ const input = createVideoInput.parse({
   style: values.style,
   voice: values.voice ?? getNiche(niche).voice,
   length: Number(values.length),
+  visuals: values.visuals,
 });
 
 const jobId = randomUUID();
@@ -64,18 +67,20 @@ console.log(`▸ Writing script for "${input.topic}"…`);
 const script = await retryOnce("script", () => getScriptWriter()(input));
 console.log(`  "${script.title}" — ${script.scenes.length} scenes, ${script.scenes.map((s) => s.narration).join(" ").split(/\s+/).length} words (${elapsed()})`);
 
-console.log("▸ Making images…");
-const generateImage = getImageGenerator();
-for (const [i, scene] of script.scenes.entries()) {
-  const key = keys.scene(jobId, i);
-  if (await storage.exists(key)) continue;
-  const img = await retryOnce(`image ${i + 1}`, () => generateImage({ prompt: scene.imagePrompt }));
-  await storage.put(key, img.bytes, img.contentType);
-  console.log(`  ${i + 1}/${script.scenes.length} (${elapsed()})`);
+console.log("▸ Making scene visuals…");
+const used: string[] = [];
+for (const [n, scene] of script.scenes.entries()) {
+  const asset = await retryOnce(`scene ${n + 1}`, () =>
+    makeSceneAsset({ jobId, n, scene, visuals: input.visuals, exclude: used }),
+  );
+  if (asset.credit) used.push(asset.credit.id);
+  const what = asset.kind === "video" ? `real footage by ${asset.credit?.name ?? "Pexels"}` : "AI scene";
+  console.log(`  ${n + 1}/${script.scenes.length} ${what} (${elapsed()})`);
 }
 
 console.log("▸ Recording voice, timing captions and rendering…");
-const tl = buildTimeline({ jobId, script, niche: input.niche, voice: input.voice });
+const media = await sceneMedia(jobId, script.scenes.length);
+const tl = buildTimeline({ jobId, script, niche: input.niche, voice: input.voice, media });
 await storage.put(keys.timeline(jobId), JSON.stringify(tl, null, 2), "application/json");
 await getRenderer()(tl, keys.timeline(jobId));
 

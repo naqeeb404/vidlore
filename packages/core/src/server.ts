@@ -3,4 +3,5 @@ export * from "./providers";
 export * from "./storage";
 export * from "./render";
 export * from "./timeline";
+export * from "./scenes";
 export * from "./paths";

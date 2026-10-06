@@ -1,4 +1,4 @@
-import { getNiche, getStyle, lengthPlan } from "../config";
+import { EFFECTS, getNiche, getStyle, lengthPlan } from "../config";
 import { script as scriptSchema, type Script } from "../schemas";
 import { requireEnv } from "./env";
 import type { WriteScript } from "./types";
@@ -14,8 +14,10 @@ const RESPONSE_SCHEMA = {
         properties: {
           narration: { type: "STRING" },
           imagePrompt: { type: "STRING" },
+          stockQuery: { type: "STRING" },
+          effect: { type: "STRING", enum: [...EFFECTS] },
         },
-        required: ["narration", "imagePrompt"],
+        required: ["narration", "imagePrompt", "stockQuery", "effect"],
       },
     },
   },
@@ -45,6 +47,8 @@ Rules:
 - Write numbers and abbreviations the way they should be spoken.
 - The last scene lands the ending (twist, takeaway or call to action).
 - imagePrompt describes ONE striking vertical (portrait 9:16) image for that scene: subject, setting, composition, lighting, mood. Keep characters consistent across scenes by repeating their key visual traits. No text, letters, logos or watermarks in the image. Do not name the art style; it is added separately.
+- stockQuery: 2-5 plain English words to search a stock-footage library for a REAL filmed vertical clip that fits this scene (e.g. "foggy forest at night", "ocean waves aerial", "old city street rain", "man running sunrise"). Describe something a camera could actually film today: generic scenery, objects, nature, people from behind, places. Use "" when no real footage could fit (fantasy creatures, specific historical people, gore, impossible events).
+- effect: one moving atmosphere for the scene if it fits the mood: "fog", "dust", "embers", "rain", "snow", or "none".
 - title is a short catchy video title (max 60 characters).
 - Keep it suitable for a general audience: no graphic violence, sexual content, hate or real-person defamation.`;
 
@@ -111,7 +115,7 @@ IMPORTANT: a previous draft had only ${countWords(parsed)} words, which is too s
   return {
     ...parsed,
     scenes: parsed.scenes.map((sc) => ({
-      narration: sc.narration,
+      ...sc,
       imagePrompt: `${sc.imagePrompt}, ${s.prompt}, vertical composition`,
     })),
   };
