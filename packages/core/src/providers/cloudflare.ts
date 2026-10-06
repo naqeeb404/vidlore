@@ -11,12 +11,9 @@ export const cloudflareGenerateImage: GenerateImage = async ({ prompt, seed }) =
   const token = requireEnv("CLOUDFLARE_API_TOKEN");
   const model = process.env.CLOUDFLARE_IMAGE_MODEL || "@cf/black-forest-labs/flux-1-schnell";
 
-  const body: Record<string, unknown> = {
-    prompt: prompt.slice(0, 2048),
-    steps: 8,
-    width: 720,
-    height: 1280,
-  };
+  const body: Record<string, unknown> = { prompt: prompt.slice(0, 2048), steps: 8 };
+  // flux-1-schnell rejects size fields; other models get native portrait output.
+  if (!model.includes("flux-1-schnell")) Object.assign(body, { width: 720, height: 1280 });
   if (seed !== undefined) body.seed = seed;
 
   const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`, {
