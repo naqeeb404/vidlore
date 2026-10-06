@@ -24,7 +24,10 @@ const RESPONSE_SCHEMA = {
 
 export const geminiWriteScript: WriteScript = async ({ topic, niche, style, length }) => {
   const apiKey = requireEnv("GEMINI_API_KEY");
-  const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
+  const models = [
+    process.env.GEMINI_MODEL || "gemini-flash-latest",
+    process.env.GEMINI_FALLBACK_MODEL || "gemini-flash-lite-latest",
+  ];
   const n = getNiche(niche);
   const s = getStyle(style);
   const plan = lengthPlan(length);
@@ -45,30 +48,37 @@ Rules:
 - title is a short catchy video title (max 60 characters).
 - Keep it suitable for a general audience: no graphic violence, sexual content, hate or real-person defamation.`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.9,
-          responseMimeType: "application/json",
-          responseSchema: RESPONSE_SCHEMA,
-        },
-        safetySettings: [
-          "HARM_CATEGORY_HARASSMENT",
-          "HARM_CATEGORY_HATE_SPEECH",
-          "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-          "HARM_CATEGORY_DANGEROUS_CONTENT",
-        ].map((category) => ({ category, threshold: "BLOCK_MEDIUM_AND_ABOVE" })),
-      }),
+  const requestBody = JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.9,
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA,
     },
-  );
-  if (!res.ok) {
-    throw new Error(`Gemini request failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
+    safetySettings: [
+      "HARM_CATEGORY_HARASSMENT",
+      "HARM_CATEGORY_HATE_SPEECH",
+      "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+      "HARM_CATEGORY_DANGEROUS_CONTENT",
+    ].map((category) => ({ category, threshold: "BLOCK_MEDIUM_AND_ABOVE" })),
+  });
+
+  // Free-tier models are often briefly overloaded (429/503): back off, then fall back to the lite model.
+  let res: Response | undefined;
+  let lastError = "";
+  outer: for (const model of models) {
+    for (const delay of [0, 2000, 5000]) {
+      if (delay) await new Promise((r) => setTimeout(r, delay));
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": apiKey }, body: requestBody },
+      );
+      if (res.ok) break outer;
+      lastError = `${model} ${res.status}: ${(await res.text()).slice(0, 200)}`;
+      if (![429, 500, 503].includes(res.status)) break outer;
+    }
   }
+  if (!res?.ok) throw new Error(`Gemini request failed (${lastError})`);
   const data = (await res.json()) as {
     candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
     promptFeedback?: { blockReason?: string };
